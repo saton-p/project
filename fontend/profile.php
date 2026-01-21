@@ -1,5 +1,6 @@
 <?php
 session_start();
+// 1. ตรวจสอบ Session
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
@@ -9,9 +10,9 @@ require_once '../db_config.php';
 $user_id = $_SESSION['user_id'];
 $message = "";
 
-// --- ส่วนประมวลผล PHP (ย้ายมาจาก edit_profile.php) ---
+// 2. ส่วนประมวลผล PHP (Logic เดิม)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // 1. แก้ไขข้อมูลส่วนตัว
+    // 2.1 แก้ไขข้อมูลส่วนตัว
     if (isset($_POST['update_profile'])) {
         $full_name = $_POST['full_name'];
         $email = $_POST['email'];
@@ -19,14 +20,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $sql = "UPDATE users SET full_name = ?, email = ? WHERE user_id = ?";
             $stmt = $conn->prepare($sql);
             $stmt->execute([$full_name, $email, $user_id]);
+            
+            // อัปเดต Session ให้แสดงชื่อใหม่ทันที
             $_SESSION['full_name'] = $full_name;
-            $message = "<script>alert('อัปเดตข้อมูลสำเร็จ');</script>";
+            $message = "<div class='alert success'>✅ อัปเดตข้อมูลสำเร็จ</div>";
         } catch(PDOException $e) {
-            $message = "<script>alert('Error: " . $e->getMessage() . "');</script>";
+            $message = "<div class='alert error'>❌ Error: " . $e->getMessage() . "</div>";
         }
     }
     
-    // 2. เปลี่ยนรหัสผ่าน
+    // 2.2 เปลี่ยนรหัสผ่าน
     if (isset($_POST['change_password'])) {
         $old_pass = $_POST['old_password'];
         $new_pass = $_POST['new_password'];
@@ -41,21 +44,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $hashed_pass = password_hash($new_pass, PASSWORD_DEFAULT);
                 $update_pw = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
                 $update_pw->execute([$hashed_pass, $user_id]);
-                $message = "<script>alert('เปลี่ยนรหัสผ่านสำเร็จ');</script>";
+                $message = "<div class='alert success'>✅ เปลี่ยนรหัสผ่านสำเร็จ</div>";
             } else {
-                $message = "<script>alert('รหัสผ่านใหม่ไม่ตรงกัน');</script>";
+                $message = "<div class='alert error'>⚠️ รหัสผ่านใหม่ไม่ตรงกัน</div>";
             }
         } else {
-            $message = "<script>alert('รหัสผ่านเดิมไม่ถูกต้อง');</script>";
+            $message = "<div class='alert error'>⚠️ รหัสผ่านเดิมไม่ถูกต้อง</div>";
         }
     }
-    
-    // รีเฟรชหน้าเพื่อเคลียร์ค่า POST (ป้องกันการกด F5 แล้วส่งซ้ำ)
-    // echo "<meta http-equiv='refresh' content='0'>"; 
 }
 
-// ดึงข้อมูลล่าสุดมาแสดง
-$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+// 3. ดึงข้อมูลล่าสุดมาแสดง
+$stmt = $conn->prepare("SELECT users.*, departments.dept_name 
+                        FROM users 
+                        LEFT JOIN departments ON users.dept_id = departments.dept_id 
+                        WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 ?>
@@ -64,146 +67,156 @@ $user = $stmt->fetch();
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>โปรไฟล์ส่วนตัว</title>
+    <title>โปรไฟล์ส่วนตัว - Carbon System</title>
     <style>
-        /* CSS หลัก */
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .navbar { background-color: #2c3e50; overflow: hidden; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; color: white; height: 60px; }
-        .navbar a { color: white; text-decoration: none; padding: 14px 20px; display: inline-block; }
-        .container { padding: 20px; max-width: 600px; margin: 30px auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .info-group { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        label { font-weight: bold; color: #555; }
-
-        /* --- CSS สำหรับ Pop-up (Modal) --- */
-        .modal {
-            display: none; /* ซ่อนไว้ก่อน */
-            position: fixed; 
-            z-index: 1000; 
-            left: 0;
-            top: 0;
-            width: 100%; 
-            height: 100%; 
-            overflow: auto; 
-            background-color: rgba(0,0,0,0.5); /* พื้นหลังสีดำจางๆ */
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 10% auto; /* จัดกึ่งกลางแนวตั้ง */
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px; /* ความกว้างสูงสุด */
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            position: relative;
-        }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover { color: black; }
+        /* CSS หลัก (Theme เดียวกับ Home/History) */
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f4f6f9; display: flex; height: 100vh; overflow: hidden; }
         
-        /* สไตล์ฟอร์มใน Modal */
-        .form-group { margin-bottom: 15px; }
-        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-submit { background-color: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-submit:hover { background-color: #219150; }
-        .tab-header { border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px; font-weight: bold; color: #2c3e50; }
+        /* Sidebar */
+        .sidebar { width: 250px; background-color: #117a65; color: white; display: flex; flex-direction: column; flex-shrink: 0; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        .sidebar-header { padding: 20px; background-color: #0e6251; text-align: center; font-weight: bold; font-size: 1.2em; }
+        .user-profile { padding: 15px; border-bottom: 1px solid #148f77; font-size: 0.9em; color: #a2d9ce; text-align: center; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .sidebar-menu li a { display: block; padding: 15px 20px; color: white; text-decoration: none; border-left: 4px solid transparent; transition: 0.3s; }
+        .sidebar-menu li a:hover { background-color: #0e6251; border-left-color: #f1c40f; }
+        .sidebar-menu li a.active { background-color: #0e6251; border-left-color: #f1c40f; font-weight: bold; }
+        .logout-container { padding: 15px; }
+        .btn-logout { display: block; width: 100%; padding: 10px 0; background-color: #e74c3c; color: white; text-align: center; text-decoration: none; border-radius: 4px; }
+        
+        /* Main Content */
+        .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* Grid Layout สำหรับหน้า Profile */
+        .profile-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        
+        /* Card Styles */
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 15px; color: #2c3e50; font-size: 1.1em; }
+        
+        /* Profile Info (Left Side) */
+        .profile-info-row { margin-bottom: 15px; }
+        .profile-info-row label { display: block; font-weight: bold; color: #888; font-size: 0.85em; margin-bottom: 3px; }
+        .profile-info-row span { font-size: 1.1em; color: #333; font-weight: 500; }
+        .avatar-placeholder { width: 80px; height: 80px; background: #e8f6f3; color: #117a65; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5em; margin: 0 auto 20px auto; }
+        
+        /* Forms */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; font-size: 0.9em; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .form-group input:disabled { background-color: #f9f9f9; color: #999; cursor: not-allowed; }
+        
+        .btn-submit { background-color: #117a65; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; }
+        .btn-submit:hover { background-color: #0e6251; }
+        .btn-warning { background-color: #e67e22; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; }
+        .btn-warning:hover { background-color: #d35400; }
+
+        /* Alert */
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 4px; text-align: center; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        /* Responsive: มือถือให้เรียงแนวตั้ง */
+        @media (max-width: 768px) {
+            .profile-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <?php echo $message; ?>
 
-    <nav class="navbar">
-        <div class="logo"><strong>Carbon System</strong></div>
-        <div class="nav-links">
-            <a href="home.php">หน้าหลัก</a>
-            <a href="profile.php">โปรไฟล์ส่วนตัว</a>
-            <a href="logout.php">ออกจากระบบ</a>
+    <nav class="sidebar">
+        <div class="sidebar-header">Carbon System</div>
+        <div class="user-profile">
+            <div style="font-size: 2em; margin-bottom: 5px;">👤</div>
+            <?php echo htmlspecialchars($user['full_name']); ?>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="home.php">📝 บันทึกข้อมูล</a></li>
+            <li><a href="history.php">📊 ประวัติ</a></li>
+            <li><a href="profile.php" class="active">⚙️ โปรไฟล์</a></li>
+        </ul>
+        <div class="logout-container">
+            <a href="logout.php" class="btn-logout" onclick="return confirm('ยืนยันการออกจากระบบ?')">ออกจากระบบ</a>
         </div>
     </nav>
 
-    <div class="container">
-        <h2>โปรไฟล์ส่วนตัว</h2>
-        <div class="info-group">
-            <label>ชื่อ-นามสกุล:</label> <span><?php echo htmlspecialchars($user['full_name']); ?></span>
-        </div>
-        <div class="info-group">
-            <label>Username:</label> <span><?php echo htmlspecialchars($user['username']); ?></span>
-        </div>
-        <div class="info-group">
-            <label>อีเมล:</label> <span><?php echo htmlspecialchars($user['email']); ?></span>
-        </div>
-        <div class="info-group">
-            <label>สถานะบัญชี:</label> <span><?php echo htmlspecialchars($user['status']); ?></span>
-        </div>
-        
-        <br>
-        
-        <button onclick="openModal()" style="padding:10px 20px; background:#2980b9; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
-            แก้ไขโปรไฟล์และเปลี่ยนรหัสผ่าน
-        </button>
-    </div>
-
-    <div id="editModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+    <main class="main-content">
+        <div class="container">
             
-            <h3 class="tab-header">แก้ไขข้อมูลส่วนตัว</h3>
-            <form method="POST">
-                <div class="form-group">
-                    <label>ชื่อ-นามสกุล:</label>
-                    <input type="text" name="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" required>
-                </div>
-                <div class="form-group">
-                    <label>อีเมล:</label>
-                    <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
-                </div>
-                <button type="submit" name="update_profile" class="btn-submit">บันทึกข้อมูลทั่วไป</button>
-            </form>
+            <h2 style="color: #333;">⚙️ จัดการข้อมูลส่วนตัว</h2>
+            
+            <?php echo $message; ?>
 
-            <br><hr><br>
+            <div class="profile-grid">
+                
+                <div class="card" style="text-align: center; height: fit-content;">
+                    <div class="avatar-placeholder">👤</div>
+                    <h3 style="border-bottom:none; margin-bottom:5px;">
+                        <?php echo htmlspecialchars($user['full_name']); ?>
+                    </h3>
+                    <p style="color:#666; margin-top:0;">@<?php echo htmlspecialchars($user['username']); ?></p>
+                    
+                    <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
 
-            <h3 class="tab-header">เปลี่ยนรหัสผ่าน</h3>
-            <form method="POST">
-                <div class="form-group">
-                    <label>รหัสผ่านปัจจุบัน:</label>
-                    <input type="password" name="old_password" required>
+                    <div style="text-align: left;">
+                        <div class="profile-info-row">
+                            <label>สถานะบัญชี:</label>
+                            <span style="color: #27ae60; font-weight:bold;"><?php echo htmlspecialchars($user['status']); ?></span>
+                        </div>
+                        <div class="profile-info-row">
+                            <label>แผนก:</label>
+                            <span><?php echo htmlspecialchars($user['dept_name'] ?? '-'); ?></span>
+                        </div>
+                        <div class="profile-info-row">
+                            <label>อีเมล:</label>
+                            <span><?php echo htmlspecialchars($user['email']); ?></span>
+                        </div>
+                        
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>รหัสผ่านใหม่:</label>
-                    <input type="password" name="new_password" required>
+
+                <div class="card">
+                    <h3>✏️ แก้ไขข้อมูลทั่วไป</h3>
+                    <form method="POST">
+                        <div class="form-group">
+                            <label>ชื่อผู้ใช้งาน (Username):</label>
+                            <input type="text" value="<?php echo htmlspecialchars($user['username']); ?>" disabled>
+                            <small style="color:#999;">*Username ไม่สามารถเปลี่ยนได้</small>
+                        </div>
+                        <div class="form-group">
+                            <label>ชื่อ-นามสกุล:</label>
+                            <input type="text" name="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label>อีเมล:</label>
+                            <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                        </div>
+                        <button type="submit" name="update_profile" class="btn-submit">💾 บันทึกการเปลี่ยนแปลง</button>
+                    </form>
+
+                    <br><br>
+
+                    <h3 style="color:#e67e22; border-bottom: 1px solid #fad7a0;">🔒 เปลี่ยนรหัสผ่าน</h3>
+                    <form method="POST">
+                        <div class="form-group">
+                            <label>รหัสผ่านเดิม:</label>
+                            <input type="password" name="old_password" placeholder="กรอกรหัสผ่านปัจจุบัน" required>
+                        </div>
+                        <div class="form-group">
+                            <label>รหัสผ่านใหม่:</label>
+                            <input type="password" name="new_password" placeholder="ตั้งรหัสผ่านใหม่" required>
+                        </div>
+                        <div class="form-group">
+                            <label>ยืนยันรหัสผ่านใหม่:</label>
+                            <input type="password" name="confirm_password" placeholder="กรอกรหัสผ่านใหม่ซ้ำอีกครั้ง" required>
+                        </div>
+                        <button type="submit" name="change_password" class="btn-warning">🔑 ยืนยันเปลี่ยนรหัสผ่าน</button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label>ยืนยันรหัสผ่านใหม่:</label>
-                    <input type="password" name="confirm_password" required>
-                </div>
-                <button type="submit" name="change_password" class="btn-submit" style="background-color: #e67e22;">เปลี่ยนรหัสผ่าน</button>
-            </form>
+
+            </div>
         </div>
-    </div>
+    </main>
 
-    <script>
-        // ฟังก์ชันเปิด Modal
-        function openModal() {
-            document.getElementById("editModal").style.display = "block";
-        }
-
-        // ฟังก์ชันปิด Modal
-        function closeModal() {
-            document.getElementById("editModal").style.display = "none";
-        }
-
-        // ถ้าคลิกที่พื้นหลังสีดำ (นอกกล่อง) ให้ปิด Modal
-        window.onclick = function(event) {
-            var modal = document.getElementById("editModal");
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
-    </script>
 </body>
 </html>

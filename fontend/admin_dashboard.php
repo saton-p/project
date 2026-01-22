@@ -1,9 +1,16 @@
 <?php
 session_start();
 
+// --- Logic สำหรับออกจากระบบ ---
+if (isset($_GET['action']) && $_GET['action'] == 'logout') {
+    session_unset();    // ล้างค่าตัวแปร Session ทั้งหมด
+    session_destroy();  // ทำลาย Session
+    header("Location: login.php"); // เด้งกลับไปหน้า Login
+    exit();
+}
 // 1. ตรวจสอบสิทธิ์
 if (!isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
-    header("Location: admin_login.php");
+    header("Location: login.php"); // เปลี่ยนตรงนี้
     exit();
 }
 
@@ -300,8 +307,7 @@ if ($page == 'depts') {
             <li><a href="admin_dashboard.php?page=sources" class="<?php echo ($page == 'sources') ? 'active' : ''; ?>">🌱 แหล่งกำเนิดคาร์บอน</a></li>
         </ul>
         <div class="logout-container">
-            <a href="admin_logout.php" class="btn-logout" onclick="return confirm('ยืนยันการออกจากระบบ?')">ออกจากระบบ</a>
-        </div>
+<a href="admin_dashboard.php?action=logout" class="btn-logout" onclick="return confirm('ยืนยันการออกจากระบบ?')">ออกจากระบบ</a>        </div>
     </nav>
 
     <main class="main-content">

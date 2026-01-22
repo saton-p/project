@@ -1,5 +1,15 @@
 <?php
 session_start();
+
+// --- [เพิ่มส่วนนี้] Logic สำหรับออกจากระบบ (Logout) ---
+if (isset($_GET['action']) && $_GET['action'] == 'logout') {
+    session_unset();    // ล้างค่า Session
+    session_destroy();  // ทำลาย Session
+    header("Location: login.php"); // เด้งกลับไปหน้า Login
+    exit();
+}
+// -----------------------------------------------------
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
@@ -187,7 +197,7 @@ $grand_total = $sum_scope_1 + $sum_scope_2 + $sum_scope_3;
             <li><a href="profile.php">⚙️ โปรไฟล์</a></li>
         </ul>
         <div class="logout-container">
-            <a href="logout.php" class="btn-logout" onclick="return confirm('ยืนยันการออกจากระบบ?')">ออกจากระบบ</a>
+            <a href="history.php?action=logout" class="btn-logout" onclick="return confirm('ยืนยันการออกจากระบบ?')">ออกจากระบบ</a>
         </div>
     </nav>
 

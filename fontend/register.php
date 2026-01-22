@@ -1,23 +1,47 @@
 <?php
+// 1. เชื่อมต่อฐานข้อมูล
 require_once '../db_config.php';
 
+// ดึงข้อมูลแผนกมารอไว้ก่อน (เพื่อป้องกัน Error ใน HTML)
+$departments = [];
+try {
+    $dept_stmt = $conn->query("SELECT * FROM departments");
+    $departments = $dept_stmt->fetchAll();
+} catch (PDOException $e) {
+    // กรณีดึงข้อมูลไม่ได้ ให้ปล่อยเป็น array ว่าง
+}
+
+// 2. Logic การลงทะเบียน
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT); // เข้ารหัสรหัสผ่าน
     $full_name = $_POST['full_name'];
     $email = $_POST['email'];
-    $role_id = $_POST['role_id'];
+    
+    // *** กำหนดค่า Role ID = 1 (User ทั่วไป) โดยอัตโนมัติ ***
+    $role_id = 1; 
+    
     $dept_id = $_POST['dept_id'];
     $status = 'active';
 
     try {
-        $sql = "INSERT INTO users (username, password, full_name, email, role_id, dept_id, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$username, $password, $full_name, $email, $role_id, $dept_id, $status]);
-        echo "<script>alert('ลงทะเบียนสำเร็จ!'); window.location='login.php';</script>";
+        // เช็คว่า Username ซ้ำไหม
+        $check = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+        $check->execute([$username]);
+        
+        if ($check->fetchColumn() > 0) {
+            echo "<script>alert('ชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาเลือกชื่ออื่น');</script>";
+        } else {
+            // บันทึกข้อมูล
+            $sql = "INSERT INTO users (username, password, full_name, email, role_id, dept_id, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$username, $password, $full_name, $email, $role_id, $dept_id, $status]);
+            
+            echo "<script>alert('ลงทะเบียนสำเร็จ! เข้าสู่โซนของคุณได้เลย'); window.location='login.php';</script>";
+        }
     } catch(PDOException $e) {
-        echo "เกิดข้อผิดพลาด: " . $e->getMessage();
+        echo "<script>alert('เกิดข้อผิดพลาด: " . $e->getMessage() . "');</script>";
     }
 }
 ?>
@@ -388,18 +412,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
 
             <div class="input-group">
-                <label>บทบาท (Role ID):</label>
-                <input type="number" name="role_id" value="1" required>
-            </div>
-
-            <div class="input-group">
                 <label>เลือกแผนก:</label>
                 <select name="dept_id" required>
                     <option value="" disabled selected>-- เลือกแผนก --</option>
                     <?php
-                    $dept_stmt = $conn->query("SELECT * FROM departments");
-                    while ($dept = $dept_stmt->fetch()) {
-                        echo "<option value='{$dept['dept_id']}'>{$dept['dept_name']}</option>";
+                    // วนลูปแสดงรายชื่อแผนกจาก Database
+                    if (count($departments) > 0) {
+                        foreach ($departments as $dept) {
+                            echo "<option value='{$dept['dept_id']}'>{$dept['dept_name']}</option>";
+                        }
+                    } else {
+                        echo "<option value='' disabled>ไม่พบข้อมูลแผนก</option>";
                     }
                     ?>
                 </select>

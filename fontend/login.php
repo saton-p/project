@@ -164,8 +164,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="login-container">
         <div class="co2-icon">🌱</div>
-        <h2>Carbon Street</h2>
-        <div class="subtitle">Eco Warriors Login</div>
+        <h2>Carbon Footprint</h2>
+        <div class="subtitle">Faculty of Business Administration RMUTP Login</div>
 
         <form method="POST">
             <div class="input-group">
@@ -174,14 +174,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="input-group">
                 <input type="password" name="password" placeholder="Password" required>
             </div>
-            <button type="submit">Enter Zone</button>
+            <button type="submit">Enter LOGIN</button>
         </form>
 
         <hr>
 
         <div class="register-section">
-            <p>ยังไม่ได้เป็นส่วนหนึ่งของเรา?</p>
-            <a href="register.php" class="btn-register"><span>Join The Movement</span></a>
+            <p>Create a new account</p>
+            <a href="register.php" class="btn-register"><span>Register</span></a>
         </div>
     </div>
 </body>

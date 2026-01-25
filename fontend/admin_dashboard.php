@@ -487,22 +487,22 @@ if ($page == 'depts') {
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         
         <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">🏢 ข้อมูลอาคารและสถานที่</h3>
+            <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">🏢 ข้อมูลขององค์กร</h3>
             <form method="POST">
                 <div class="form-group">
-                    <label>ชื่อองค์กร:</label>
+                    <label>ชื่อองค์กร :</label>
                     <input type="text" name="org_name" value="<?php echo htmlspecialchars($org_info['org_name']); ?>" required>
                 </div>
                 <div class="form-group">
-                    <label>ที่อยู่ / ข้อมูลอาคาร:</label>
+                    <label>ที่อยู่ / ข้อมูลอาคาร :</label>
                     <textarea name="address" rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;"><?php echo htmlspecialchars($org_info['address']); ?></textarea>
                 </div>
                 <div class="form-group">
-                    <label>จำนวนพนักงาน (คน):</label>
+                    <label>จำนวนพนักงาน (คน) :</label>
                     <input type="number" name="total_employees" value="<?php echo $org_info['total_employees']; ?>" required>
                 </div>
                 <div class="form-group">
-                    <label>วันเริ่มปีงบประมาณ:</label>
+                    <label>วันเริ่มปีงบประมาณ :</label>
                     <input type="date" name="fiscal_year_start" value="<?php echo $org_info['fiscal_year_start']; ?>">
                 </div>
                 <button type="submit" name="update_org_info" class="btn-action" style="background:#2c3e50; border:none; width:100%; padding:10px;">บันทึกข้อมูลองค์กร</button>

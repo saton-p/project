@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 20, 2026 at 07:28 PM
+-- Generation Time: Jan 25, 2026 at 07:03 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -52,15 +52,55 @@ CREATE TABLE `admins` (
   `password` varchar(255) NOT NULL,
   `full_name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `role_id` int(11) NOT NULL DEFAULT 2
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `admins`
 --
 
-INSERT INTO `admins` (`admin_id`, `username`, `password`, `full_name`, `email`, `created_at`) VALUES
-(1, 'admin', '$2y$10$RZaQhI3X95fyfbLeB97VyO82l1CYtQe5kCcOOUgZuHbBjlfLOMJNm', 'admin', 'admin@gmail.com', '2026-01-20 18:02:34');
+INSERT INTO `admins` (`admin_id`, `username`, `password`, `full_name`, `email`, `created_at`, `role_id`) VALUES
+(1, 'admin', '$2y$10$RZaQhI3X95fyfbLeB97VyO82l1CYtQe5kCcOOUgZuHbBjlfLOMJNm', 'admin', 'admin@gmail.com', '2026-01-20 18:02:34', 2);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `carbon_logs`
+--
+
+CREATE TABLE `carbon_logs` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `factor_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL COMMENT 'จำนวนที่กรอก',
+  `emission_result` decimal(10,4) NOT NULL COMMENT 'ผลลัพธ์การคำนวณ',
+  `log_date` date NOT NULL,
+  `log_type` varchar(20) DEFAULT 'daily',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `carbon_logs`
+--
+
+INSERT INTO `carbon_logs` (`id`, `user_id`, `factor_id`, `amount`, `emission_result`, `log_date`, `log_type`, `created_at`) VALUES
+(63, 2, 2, 1221.00, 2673.8679, '2026-01-24', 'daily', '2026-01-24 08:58:31'),
+(64, 2, 3, 1221.00, 3306.8343, '2026-01-24', 'daily', '2026-01-24 08:58:31'),
+(65, 2, 2, 231.00, 505.8669, '2026-01-01', 'daily', '2026-01-24 09:03:05'),
+(66, 2, 3, 321.00, 869.3643, '2026-01-01', 'daily', '2026-01-24 09:03:05'),
+(67, 2, 2, 2332.00, 5106.8468, '2026-01-24', 'daily', '2026-01-24 15:07:33'),
+(68, 2, 3, 232.00, 628.3256, '2026-01-24', 'daily', '2026-01-24 15:07:33'),
+(69, 2, 2, 23.00, 50.3677, '2026-01-24', 'daily', '2026-01-24 15:08:44'),
+(70, 2, 3, 23.00, 62.2909, '2026-01-24', 'daily', '2026-01-24 15:08:44'),
+(71, 2, 2, 23.00, 50.3677, '2026-01-01', 'daily', '2026-01-24 15:09:02'),
+(72, 2, 3, 23.00, 62.2909, '2026-01-01', 'daily', '2026-01-24 15:09:02'),
+(73, 2, 2, 233.00, 510.2467, '2026-01-24', 'daily', '2026-01-24 09:14:09'),
+(74, 2, 3, 233.00, 631.0339, '2026-01-24', 'daily', '2026-01-24 09:14:09'),
+(81, 2, 2, 23.00, 50.3677, '2026-01-23', 'daily', '2026-01-24 09:15:18'),
+(82, 2, 3, 23.00, 62.2909, '2026-01-23', 'daily', '2026-01-24 09:15:18'),
+(83, 2, 2, 23.00, 50.3677, '2025-12-01', 'monthly', '2026-01-24 09:16:37'),
+(84, 2, 3, 234.00, 633.7422, '2025-12-01', 'monthly', '2026-01-24 09:16:37');
 
 -- --------------------------------------------------------
 
@@ -105,11 +145,11 @@ CREATE TABLE `emission_factors` (
 --
 
 INSERT INTO `emission_factors` (`factor_id`, `source_id`, `factor_name`, `factor_value`, `unit`, `reference_year`, `source_reference`) VALUES
-(1, 1, 'Electricity Grid Mix (Thailand)', 0.499900, 'kgCO2e/kWh', '2023', NULL),
-(2, 2, 'Gasoline', 2.189200, 'kgCO2e/Litre', '2023', NULL),
-(3, 2, 'Diesel', 2.708300, 'kgCO2e/Litre', '2023', NULL),
-(4, 4, 'Municipal Solid Waste', 0.400000, 'kgCO2e/kg', '2023', NULL),
-(5, 5, 'A4 Paper', 0.001200, 'kgCO2e/Sheet', '2023', NULL);
+(1, 1, 'ปริมาณการใช้ไฟฟ้า', 0.499900, 'kWh', '2023', NULL),
+(2, 2, 'น้ำมันเบนซิน', 2.189900, 'ลิตร', '2023', NULL),
+(3, 2, 'น้ำมันดีเซล', 2.708300, 'ลิตร', '2023', NULL),
+(4, 4, 'ปริมาณขยะของเสีย', 0.400000, 'ลิตร', '2023', NULL),
+(5, 5, 'กระดาษ A4', 0.001200, 'กิโลกรัม', '2023', NULL);
 
 -- --------------------------------------------------------
 
@@ -148,6 +188,17 @@ CREATE TABLE `organization_info` (
   `total_employees` int(11) DEFAULT NULL,
   `fiscal_year_start` date DEFAULT NULL,
   `logo_path` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `org_active_activities`
+--
+
+CREATE TABLE `org_active_activities` (
+  `id` int(11) NOT NULL,
+  `source_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -194,7 +245,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password`, `full_name`, `email`, `role_id`, `dept_id`, `status`, `last_login`, `updated_at`) VALUES
-(2, 'tawan', '$2y$10$gxnN0uEgfII./gyHvrEQ1Of2llkcs9VAxnWniSAYZ1akMQK.rMmci', 'tawan deemesri', 'tawan@gmail.com', 1, 1, 'active', '2026-01-21 00:43:29', '2026-01-20 17:43:29');
+(2, 'tawan', '$2y$10$DlmoOMItCVIsOmaLYnr8Ve0FyeoE01OTQ20JCdR0l1Qgcu586YmEa', 'tawan deemesri', 'tawan@gmail.com', 1, 1, 'active', '2026-01-25 12:10:33', '2026-01-25 05:10:33');
 
 --
 -- Indexes for dumped tables
@@ -215,6 +266,14 @@ ALTER TABLE `activity_logs`
 ALTER TABLE `admins`
   ADD PRIMARY KEY (`admin_id`),
   ADD UNIQUE KEY `username` (`username`);
+
+--
+-- Indexes for table `carbon_logs`
+--
+ALTER TABLE `carbon_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `factor_id` (`factor_id`);
 
 --
 -- Indexes for table `departments`
@@ -240,6 +299,12 @@ ALTER TABLE `emission_sources`
 --
 ALTER TABLE `organization_info`
   ADD PRIMARY KEY (`org_id`);
+
+--
+-- Indexes for table `org_active_activities`
+--
+ALTER TABLE `org_active_activities`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `roles`
@@ -273,6 +338,12 @@ ALTER TABLE `admins`
   MODIFY `admin_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `carbon_logs`
+--
+ALTER TABLE `carbon_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
+
+--
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
@@ -297,6 +368,12 @@ ALTER TABLE `organization_info`
   MODIFY `org_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `org_active_activities`
+--
+ALTER TABLE `org_active_activities`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
@@ -319,6 +396,13 @@ ALTER TABLE `activity_logs`
   ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   ADD CONSTRAINT `activity_logs_ibfk_2` FOREIGN KEY (`dept_id`) REFERENCES `departments` (`dept_id`),
   ADD CONSTRAINT `activity_logs_ibfk_3` FOREIGN KEY (`factor_id`) REFERENCES `emission_factors` (`factor_id`);
+
+--
+-- Constraints for table `carbon_logs`
+--
+ALTER TABLE `carbon_logs`
+  ADD CONSTRAINT `carbon_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `carbon_logs_ibfk_2` FOREIGN KEY (`factor_id`) REFERENCES `emission_factors` (`factor_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `emission_factors`

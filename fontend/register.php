@@ -62,7 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            background: linear-gradient(135deg, #a8c0ff 0%, #c2e9fb 50%, #a8c0ff 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -72,7 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             overflow-x: hidden;
         }
 
-        /* พื้นหลังแบบ Graffiti Pattern */
+        /* พื้นหลังแบบ Pattern */
         body::before {
             content: '';
             position: absolute;
@@ -81,20 +81,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             right: 0;
             bottom: 0;
             background-image: 
-                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(76, 175, 80, 0.03) 35px, rgba(76, 175, 80, 0.03) 70px),
-                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(33, 150, 243, 0.03) 35px, rgba(33, 150, 243, 0.03) 70px);
+                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(102, 126, 234, 0.05) 35px, rgba(102, 126, 234, 0.05) 70px),
+                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(168, 192, 255, 0.05) 35px, rgba(168, 192, 255, 0.05) 70px);
             pointer-events: none;
         }
 
-        /* กรอบหลักสไตล์สตรีท */
+        /* กรอบหลัก */
         .register-container {
-            background: rgba(30, 30, 30, 0.95);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
             padding: 50px 40px;
             border-radius: 20px;
             box-shadow: 
-                0 20px 60px rgba(0, 0, 0, 0.5),
-                inset 0 0 0 2px rgba(76, 175, 80, 0.3),
-                0 0 40px rgba(76, 175, 80, 0.1);
+                0 20px 60px rgba(0, 0, 0, 0.3),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.2),
+                0 0 40px rgba(102, 126, 234, 0.2);
             max-width: 500px;
             width: 100%;
             position: relative;
@@ -109,35 +110,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             left: -3px;
             right: -3px;
             bottom: -3px;
-            background: linear-gradient(45deg, #4CAF50, #2196F3, #4CAF50);
+            background: linear-gradient(45deg, #667eea, #a8c0ff, #5fa3d0, #667eea);
+            background-size: 300% 300%;
             border-radius: 20px;
             z-index: -1;
-            opacity: 0.5;
+            opacity: 0.6;
+            animation: gradientShift 6s ease infinite;
         }
 
-        /* หัวข้อสไตล์ Graffiti */
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* หัวข้อ */
         h2 {
             font-family: 'Bebas Neue', cursive;
             font-size: 48px;
             text-align: center;
             margin-bottom: 10px;
-            background: linear-gradient(45deg, #4CAF50, #8BC34A, #CDDC39);
+            background: linear-gradient(45deg, #4c51bf, #2c5282, #2b6cb0);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             text-transform: uppercase;
             letter-spacing: 3px;
-            text-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+            filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3));
         }
 
         .subtitle {
             text-align: center;
-            color: #9e9e9e;
+            color: #2d3748;
             font-size: 14px;
             margin-bottom: 30px;
-            font-weight: 300;
+            font-weight: 500;
             letter-spacing: 2px;
             text-transform: uppercase;
+            text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
         }
 
         /* ไอคอน CO2 */
@@ -145,7 +154,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             text-align: center;
             margin-bottom: 20px;
             font-size: 60px;
-            filter: drop-shadow(0 0 20px rgba(76, 175, 80, 0.5));
+            filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5));
             animation: float 3s ease-in-out infinite;
         }
 
@@ -160,12 +169,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         label {
             display: block;
-            color: #4CAF50;
+            color: #2d3748;
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 8px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
         }
 
         input[type="text"],
@@ -175,27 +185,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         select {
             width: 100%;
             padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(76, 175, 80, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(102, 126, 234, 0.4);
             border-radius: 12px;
-            color: #fff;
+            color: #2d3748;
             font-size: 16px;
             transition: all 0.3s ease;
             font-family: 'Poppins', sans-serif;
+            font-weight: 500;
         }
 
         select {
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234CAF50' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234c51bf' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 15px center;
             padding-right: 40px;
         }
 
         select option {
-            background: #2d2d2d;
-            color: #fff;
+            background: #ffffff;
+            color: #2d3748;
             padding: 10px;
         }
 
@@ -205,24 +216,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         input[type="number"]:focus,
         select:focus {
             outline: none;
-            border-color: #4CAF50;
-            background: rgba(76, 175, 80, 0.1);
-            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+            border-color: #5fa3d0;
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 0 20px rgba(95, 163, 208, 0.4);
             transform: translateY(-2px);
         }
 
         input::placeholder {
-            color: #888;
+            color: #4a5568;
             text-transform: uppercase;
             font-size: 12px;
             letter-spacing: 1px;
+            font-weight: 500;
         }
 
-        /* ปุ่ม Register สไตล์สตรีท */
+        /* ปุ่ม Register */
         button[type="submit"] {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+            background: linear-gradient(135deg, #667eea 0%, #5fa3d0 100%);
             color: white;
             border: none;
             border-radius: 12px;
@@ -232,7 +244,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             letter-spacing: 2px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
             position: relative;
             overflow: hidden;
             margin-top: 10px;
@@ -255,7 +267,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         button[type="submit"]:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(76, 175, 80, 0.6);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
         }
 
         button[type="submit"]:active {
@@ -267,19 +279,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             text-align: center;
             margin-top: 25px;
             padding-top: 25px;
-            border-top: 1px solid rgba(76, 175, 80, 0.2);
+            border-top: 2px solid rgba(102, 126, 234, 0.3);
         }
 
         .back-to-login p {
-            color: #9e9e9e;
+            color: #2d3748;
             font-size: 13px;
             margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
         }
 
         .back-to-login a {
-            color: #4CAF50;
+            color: #4c51bf;
             text-decoration: none;
             font-weight: 600;
             font-size: 14px;
@@ -290,7 +304,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .back-to-login a:hover {
-            color: #66BB6A;
+            color: #5fa3d0;
             transform: translateX(-5px);
         }
 
@@ -336,24 +350,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .circle {
             position: absolute;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(76, 175, 80, 0.1), transparent);
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
             animation: pulse 4s ease-in-out infinite;
         }
 
         .circle:nth-child(1) {
-            width: 300px;
-            height: 300px;
-            top: -150px;
-            left: -150px;
+            width: 400px;
+            height: 400px;
+            top: -200px;
+            left: -200px;
             animation-delay: 0s;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.15), transparent);
         }
 
         .circle:nth-child(2) {
-            width: 200px;
-            height: 200px;
-            bottom: -100px;
-            right: -100px;
+            width: 300px;
+            height: 300px;
+            bottom: -150px;
+            right: -150px;
             animation-delay: 2s;
+            background: radial-gradient(circle, rgba(95, 163, 208, 0.15), transparent);
         }
 
         .circle:nth-child(3) {
@@ -363,11 +379,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             left: 50%;
             transform: translate(-50%, -50%);
             animation-delay: 1s;
+            background: radial-gradient(circle, rgba(168, 192, 255, 0.1), transparent);
         }
 
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 0.3; }
-            50% { transform: scale(1.1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.5; }
         }
 
         /* กำหนดสไตล์ input number ไม่ให้แสดงลูกศร */
@@ -391,8 +408,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="register-container">
         <div class="co2-icon">🌿</div>
-        <h2>Join Us</h2>
-        <div class="subtitle">Become an Eco Warrior</div>
+        <h2>Register</h2>
+        <div class="subtitle">Create a new account</div>
 
         <form method="POST">
             <div class="input-group">
@@ -432,8 +449,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </form>
 
         <div class="back-to-login">
-            <p>มีบัญชีอยู่แล้ว?</p>
-            <a href="login.php">← กลับไปหน้า Login</a>
+            <p>Have account?</p>
+            <a href="login.php">← Return to Login</a>
         </div>
     </div>
 </body>

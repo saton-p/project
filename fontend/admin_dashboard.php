@@ -387,7 +387,7 @@ if ($page == 'depts') {
                                 : '<span class="status-inactive">Inactive</span>'; ?>
                         </td>
                         <td style="text-align:center;">
-                            <a href="admin_user_results.php?id=<?php echo $user['user_id']; ?>" class="btn-action btn-results">📊 ผลคำนวณ</a>
+                            
                             
                             <button type="button" class="btn-action btn-edit" style="border:none;"
                                 onclick="openEditUserModal(

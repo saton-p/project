@@ -326,6 +326,24 @@ $grand_total = array_sum($sums);
             document.getElementById('tab-' + tabName).classList.add('active');
             document.getElementById('btn-' + tabName).classList.add('active');
         }
+        // ฟังก์ชันสำหรับกรอง Scope
+function filterScope() {
+    var selected = document.getElementById('scopeSelector').value;
+    var sections = document.querySelectorAll('.scope-section'); // ต้องมี class นี้ใน div ที่หุ้มแต่ละ Scope
+    
+    sections.forEach(function(el) {
+        if (selected === 'all') {
+            el.style.display = 'block';
+        } else {
+            // เช็ค ID ว่าตรงกับ scope-section-1, 2, 3 หรือไม่
+            if (el.id === 'scope-section-' + selected) {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+    });
+}
     </script>
 </head>
 <body>
@@ -354,49 +372,66 @@ $grand_total = array_sum($sums);
                 
                 <div class="header-section"><div><h2>บันทึกกิจกรรมประจำวัน</h2><div class="sub-text">กรอกข้อมูลการใช้พลังงานและทรัพยากรเพื่อคำนวณคาร์บอนฟุตพริ้นท์</div></div></div>
                 <form method="POST">
-                    <div style="margin-bottom: 10px; font-weight: 500; color: var(--text-muted);">เลือกรูปแบบการบันทึกเวลา:</div>
-                    <div class="radio-group">
-                        <label class="radio-item"><input type="radio" name="date_mode" value="daily" onchange="toggleDateInput('daily')" <?php echo ($date_mode=='daily')?'checked':''; ?>> รายวัน</label>
-                        <label class="radio-item"><input type="radio" name="date_mode" value="monthly" onchange="toggleDateInput('monthly')" <?php echo ($date_mode=='monthly')?'checked':''; ?>> รายเดือน</label>
-                        <label class="radio-item"><input type="radio" name="date_mode" value="quarterly" onchange="toggleDateInput('quarterly')" <?php echo ($date_mode=='quarterly')?'checked':''; ?>> รายไตรมาส</label>
-                        <label class="radio-item"><input type="radio" name="date_mode" value="yearly" onchange="toggleDateInput('yearly')" <?php echo ($date_mode=='yearly')?'checked':''; ?>> รายปี</label>
+    
+    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
+        <label style="font-weight: 600; color: #2d3436; margin-right: 10px; display: block; margin-bottom: 8px;">
+            🔍 เลือกขอบเขต (Scope) ที่ต้องการบันทึก:
+        </label>
+        <select id="scopeSelector" onchange="filterScope()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Prompt'; font-size: 1em; cursor: pointer;">
+            <option value="all">แสดงทั้งหมด (All Scopes)</option>
+            <option value="1">Scope 1: การปล่อยก๊าซเรือนกระจกทางตรง</option>
+            <option value="2">Scope 2: การปล่อยก๊าซเรือนกระจกทางอ้อม</option>
+            <option value="3">Scope 3: การปล่อยก๊าซเรือนกระจกทางอ้อมอื่นๆ</option>
+        </select>
+    </div>
+    <div style="margin-bottom: 10px; font-weight: 500; color: var(--text-muted);">เลือกรูปแบบการบันทึกเวลา:</div>
+    <div class="radio-group">
+        <label class="radio-item"><input type="radio" name="date_mode" value="daily" onchange="toggleDateInput('daily')" <?php echo ($date_mode=='daily')?'checked':''; ?>> รายวัน</label>
+        <label class="radio-item"><input type="radio" name="date_mode" value="monthly" onchange="toggleDateInput('monthly')" <?php echo ($date_mode=='monthly')?'checked':''; ?>> รายเดือน</label>
+        <label class="radio-item"><input type="radio" name="date_mode" value="quarterly" onchange="toggleDateInput('quarterly')" <?php echo ($date_mode=='quarterly')?'checked':''; ?>> รายไตรมาส</label>
+        <label class="radio-item"><input type="radio" name="date_mode" value="yearly" onchange="toggleDateInput('yearly')" <?php echo ($date_mode=='yearly')?'checked':''; ?>> รายปี</label>
+    </div>
+
+    <div class="date-input-container">
+        <label>📅 ช่วงเวลา:</label>
+        <div id="input-daily" class="date-input <?php echo ($date_mode=='daily')?'active':''; ?>"><input type="date" name="log_date_day" value="<?php echo $_POST['log_date_day'] ?? date('Y-m-d'); ?>" class="date-field"></div>
+        <div id="input-monthly" class="date-input <?php echo ($date_mode=='monthly')?'active':''; ?>"><input type="month" name="log_date_month" value="<?php echo $_POST['log_date_month'] ?? date('Y-m'); ?>" class="date-field"></div>
+        <div id="input-quarterly" class="date-input <?php echo ($date_mode=='quarterly')?'active':''; ?>">
+            <select name="log_date_q_year" class="date-field"><?php for($y=date('Y'); $y>=date('Y')-2; $y--) echo "<option value='$y' ".(($_POST['log_date_q_year']??'')==$y?'selected':'').">$y</option>"; ?></select>
+            <select name="log_date_quarter" class="date-field">
+                <?php for($q=1;$q<=4;$q++) echo "<option value='$q' ".(($_POST['log_date_quarter']??'')==$q?'selected':'').">ไตรมาส $q</option>"; ?>
+            </select>
+        </div>
+        <div id="input-yearly" class="date-input <?php echo ($date_mode=='yearly')?'active':''; ?>"><select name="log_date_year" class="date-field"><?php for($y=date('Y'); $y>=date('Y')-5; $y--) echo "<option value='$y' ".(($_POST['log_date_year']??'')==$y?'selected':'').">$y</option>"; ?></select></div>
+    </div>
+    
+    <?php foreach([1,2,3] as $s_id): if(!empty($scope_grouped[$s_id])): ?>
+        <div id="scope-section-<?php echo $s_id; ?>" class="scope-section">
+            <div class="scope-header">
+                
+                <span class="scope-badge s<?php echo $s_id; ?>-bg">Scope <?php echo $s_id; ?></span>
+                <h3 class="s<?php echo $s_id; ?>-color"><?php echo ($s_id==1) ? 'การปล่อยก๊าซเรือนกระจกทางตรง (Direct Emissions)' : (($s_id==2) ? 'การปล่อยก๊าซเรือนกระจกทางอ้อม (Indirect Emissions)' : 'การปล่อยก๊าซเรือนกระจกทางอ้อมอื่นๆ (Other Indirect Emissions)'); ?></h3>
+            </div>
+            <?php foreach ($scope_grouped[$s_id] as $src => $facts): ?>
+            <div class="card">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                    <span style="font-size:1.5em;"><?php echo ($s_id==1)?'⛽':(($s_id==2)?'⚡':'♻️'); ?></span><h3 style="margin:0; color:#2d3436; font-size:1.1em;"><?php echo htmlspecialchars($src); ?></h3>
+                </div>
+                <div class="grid-inputs">
+                    <?php foreach ($facts as $f): ?>
+                    <div class="input-wrapper">
+                        <label class="input-label"><?php echo $f['factor_name']; ?></label>
+                        <div class="modern-input-group"><input type="number" step="0.01" min="0" name="activity[<?php echo $f['factor_id']; ?>]" placeholder="0.00"><span class="unit-badge"><?php echo $f['unit']; ?></span></div>
                     </div>
-                    <div class="date-input-container">
-                        <label>📅 ช่วงเวลา:</label>
-                        <div id="input-daily" class="date-input <?php echo ($date_mode=='daily')?'active':''; ?>"><input type="date" name="log_date_day" value="<?php echo $_POST['log_date_day'] ?? date('Y-m-d'); ?>" class="date-field"></div>
-                        <div id="input-monthly" class="date-input <?php echo ($date_mode=='monthly')?'active':''; ?>"><input type="month" name="log_date_month" value="<?php echo $_POST['log_date_month'] ?? date('Y-m'); ?>" class="date-field"></div>
-                        <div id="input-quarterly" class="date-input <?php echo ($date_mode=='quarterly')?'active':''; ?>">
-                            <select name="log_date_q_year" class="date-field"><?php for($y=date('Y'); $y>=date('Y')-2; $y--) echo "<option value='$y' ".(($_POST['log_date_q_year']??'')==$y?'selected':'').">$y</option>"; ?></select>
-                            <select name="log_date_quarter" class="date-field">
-                                <?php for($q=1;$q<=4;$q++) echo "<option value='$q' ".(($_POST['log_date_quarter']??'')==$q?'selected':'').">ไตรมาส $q</option>"; ?>
-                            </select>
-                        </div>
-                        <div id="input-yearly" class="date-input <?php echo ($date_mode=='yearly')?'active':''; ?>"><select name="log_date_year" class="date-field"><?php for($y=date('Y'); $y>=date('Y')-5; $y--) echo "<option value='$y' ".(($_POST['log_date_year']??'')==$y?'selected':'').">$y</option>"; ?></select></div>
-                    </div>
-                    <?php foreach([1,2,3] as $s_id): if(!empty($scope_grouped[$s_id])): ?>
-                        <div class="scope-header">
-                            
-                            <span class="scope-badge s<?php echo $s_id; ?>-bg">Scope <?php echo $s_id; ?></span>
-                            <h3 class="s<?php echo $s_id; ?>-color"><?php echo ($s_id==1) ? 'การปล่อยก๊าซเรือนกระจกทางตรง (Direct Emissions)' : (($s_id==2) ? 'การปล่อยก๊าซเรือนกระจกทางอ้อม (Indirect Emissions)' : 'การปล่อยก๊าซเรือนกระจกทางอ้อมอื่นๆ (Other Indirect Emissions)'); ?></h3>
-                        </div>
-                        <?php foreach ($scope_grouped[$s_id] as $src => $facts): ?>
-                        <div class="card">
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                                <span style="font-size:1.5em;"><?php echo ($s_id==1)?'⛽':(($s_id==2)?'⚡':'♻️'); ?></span><h3 style="margin:0; color:#2d3436; font-size:1.1em;"><?php echo htmlspecialchars($src); ?></h3>
-                            </div>
-                            <div class="grid-inputs">
-                                <?php foreach ($facts as $f): ?>
-                                <div class="input-wrapper">
-                                    <label class="input-label"><?php echo $f['factor_name']; ?></label>
-                                    <div class="modern-input-group"><input type="number" step="0.01" min="0" name="activity[<?php echo $f['factor_id']; ?>]" placeholder="0.00"><span class="unit-badge"><?php echo $f['unit']; ?></span></div>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php endif; endforeach; ?>
-                    <button type="submit" name="save_multiple" class="btn-submit">💾 บันทึกข้อมูลทั้งหมด</button>
-                </form>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; endforeach; ?>
+
+    <button type="submit" name="save_multiple" class="btn-submit">💾 บันทึกข้อมูลทั้งหมด</button>
+</form>
 
                 <?php if ($show_submission_dashboard): ?>
                 <div style="border-top: 2px dashed #ccc; margin: 40px 0;"></div>

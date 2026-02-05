@@ -91,19 +91,26 @@ if ($page == 'users') {
 }
 
 // C. Logic: Emission Sources & Factors (จัดการค่าสัมประสิทธิ์)
+// C. [UPDATED] Logic: Emission Sources & Factors (จัดการค่าสัมประสิทธิ์)
 if ($page == 'sources') {
     
-    // 1. [CREATE] เพิ่มข้อมูลใหม่ (บันทึกลง emission_factors)
+    // Helper Function: ระบุ Scope จากชื่อ Source (ใช้เฉพาะหน้านี้)
+    function getScopeFromSourceName($name) {
+        if (strpos($name, 'ไฟฟ้า') !== false) return 2;
+        if (strpos($name, 'น้ำมัน') !== false || strpos($name, 'เชื้อเพลิง') !== false || stripos($name, 'LPG') !== false) return 1;
+        return 3;
+    }
+
+    // 1. [CREATE] เพิ่มข้อมูลใหม่
     if (isset($_POST['add_factor'])) {
-        $source_id = $_POST['source_id']; // รับค่า ID จาก Dropdown
+        $source_id = $_POST['source_id'];
         $factor_name = $_POST['factor_name'];
         $factor_value = $_POST['factor_value'];
         $unit = $_POST['unit'];
 
         if (!empty($factor_name) && !empty($factor_value)) {
             $sql = "INSERT INTO emission_factors (source_id, factor_name, factor_value, unit) VALUES (?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->execute([$source_id, $factor_name, $factor_value, $unit]);
+            $conn->prepare($sql)->execute([$source_id, $factor_name, $factor_value, $unit]);
             echo "<script>alert('เพิ่มข้อมูลเรียบร้อย'); window.location='admin_dashboard.php?page=sources';</script>";
         }
     }
@@ -117,8 +124,7 @@ if ($page == 'sources') {
         $edit_unit = $_POST['edit_unit'];
 
         $sql = "UPDATE emission_factors SET source_id=?, factor_name=?, factor_value=?, unit=? WHERE factor_id=?";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$edit_source_id, $edit_name, $edit_value, $edit_unit, $edit_id]);
+        $conn->prepare($sql)->execute([$edit_source_id, $edit_name, $edit_value, $edit_unit, $edit_id]);
         echo "<script>alert('แก้ไขข้อมูลเรียบร้อย'); window.location='admin_dashboard.php?page=sources';</script>";
     }
 
@@ -129,16 +135,23 @@ if ($page == 'sources') {
         echo "<script>alert('ลบข้อมูลเรียบร้อย'); window.location='admin_dashboard.php?page=sources';</script>";
     }
 
-    // 4. [READ] ดึงข้อมูลมาแสดง (JOIN ตารางเพื่อให้ได้ชื่อ Source)
-    // ดึงรายชื่อ Factors ทั้งหมด
-    $sql_factors = "SELECT ef.*, es.source_name 
-                    FROM emission_factors ef 
-                    LEFT JOIN emission_sources es ON ef.source_id = es.source_id 
-                    ORDER BY ef.factor_id ASC";
-    $factors_list = $conn->query($sql_factors)->fetchAll();
+    // 4. [READ] ดึงข้อมูลและจัดกลุ่มตาม Scope
+    $factors_raw = $conn->query("SELECT ef.*, es.source_name FROM emission_factors ef LEFT JOIN emission_sources es ON ef.source_id = es.source_id ORDER BY es.source_id, ef.factor_id")->fetchAll();
+    
+    // Array เก็บข้อมูลแยกตาม Scope (1, 2, 3)
+    $scope_grouped_factors = [1 => [], 2 => [], 3 => []];
+    foreach ($factors_raw as $row) {
+        $s_id = getScopeFromSourceName($row['source_name']);
+        $scope_grouped_factors[$s_id][] = $row;
+    }
 
-    // ดึงรายชื่อ Sources (สำหรับใส่ใน Dropdown เลือกหมวดหมู่)
-    $sources_options = $conn->query("SELECT * FROM emission_sources")->fetchAll();
+    // ดึงตัวเลือก Source สำหรับ Dropdown (จัดกลุ่มด้วย)
+    $sources_raw = $conn->query("SELECT * FROM emission_sources")->fetchAll();
+    $scope_grouped_sources = [1 => [], 2 => [], 3 => []];
+    foreach ($sources_raw as $src) {
+        $s_id = getScopeFromSourceName($src['source_name']);
+        $scope_grouped_sources[$s_id][] = $src;
+    }
 }
 
 // D. Logic: Organization & Departments (จัดการข้อมูลองค์กร)
@@ -614,47 +627,52 @@ if ($page == 'depts') {
 
 
         <?php if ($page == 'sources'): ?>
-            <div class="page-header">
-                <h2>จัดการค่าสัมประสิทธิ์ (Emission Factors)</h2>
+    <div class="page-header">
+        <h2>จัดการค่าสัมประสิทธิ์</h2>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+        <button onclick="openAddModal()" class="btn-add">
+            + เพิ่มรายการใหม่
+        </button>
+    </div>
+
+    <?php foreach([1, 2, 3] as $s_id): ?>
+        <div class="card" style="padding: 15px; margin-bottom: 25px;">
+            <div class="scope-header">
+                
+                <span class="scope-badge s<?php echo $s_id; ?>-bg" style="color: white;">Scope <?php echo $s_id; ?></span>
+                <h3 style="margin:0; font-size:1.1em; color:#444;">
+                    <?php echo ($s_id==1) ? 'การปล่อยก๊าซเรือนกระจกทางตรง (Direct Emissions)' : (($s_id==2) ? 'การปล่อยก๊าซเรือนกระจกทางอ้อม (Indirect Emissions)' : 'การปล่อยก๊าซเรือนกระจกทางอ้อมอื่นๆ (Other Indirect Emissions)'); ?>
+                </h3>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <button onclick="openAddModal()" class="btn-add">
-                    + เพิ่มรายการใหม่
-                </button>
-            </div>
-
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>หมวดหมู่ (Source)</th>
-                        <th>ชื่อรายการ (Factor Name)</th>
-                        <th style="text-align: right;">ค่าสัมประสิทธิ์ (Factor Value)</th>
-                        <th>หน่วย (Unit)</th>
-                        <th style="text-align: center;">จัดการ</th>
+                        <th style="width:10%;">ID</th>
+                        <th style="width:20%;">หมวดหมู่ (Source)</th>
+                        <th style="width:30%;">ชื่อรายการ (Factor Name)</th>
+                        <th style="width:20%; text-align: right;">ค่าสัมประสิทธิ์</th>
+                        <th style="width:10%;">หน่วย</th>
+                        <th style="width:10%; text-align: center;">จัดการ</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (count($factors_list) > 0): ?>
-                        <?php foreach ($factors_list as $row): ?>
+                    <?php if (count($scope_grouped_factors[$s_id]) > 0): ?>
+                        <?php foreach ($scope_grouped_factors[$s_id] as $row): ?>
                             <tr>
                                 <td><?php echo $row['factor_id']; ?></td>
-                                
                                 <td>
-                                    <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.9em;">
+                                    <span style="background:#f0f2f5; padding:2px 8px; border-radius:4px; font-size:0.9em; color:#555;">
                                         <?php echo htmlspecialchars($row['source_name'] ?? 'N/A'); ?>
                                     </span>
                                 </td>
-                                
                                 <td><?php echo htmlspecialchars($row['factor_name']); ?></td>
-                                
                                 <td style="text-align: right; color: #2980b9; font-weight: bold;">
                                     <?php echo number_format($row['factor_value'], 4); ?>
                                 </td>
-                                
                                 <td><?php echo htmlspecialchars($row['unit']); ?></td>
-                                
                                 <td style="text-align: center;">
                                     <button type="button" class="btn-action btn-edit" style="border:none;"
                                         onclick="openEditModal(
@@ -666,7 +684,6 @@ if ($page == 'depts') {
                                         )">
                                         แก้ไข
                                     </button>
-                                    
                                     <a href="admin_dashboard.php?page=sources&delete_factor_id=<?php echo $row['factor_id']; ?>" 
                                        class="btn-action btn-del"
                                        onclick="return confirm('ยืนยันที่จะลบรายการนี้?')">ลบ</a>
@@ -674,108 +691,117 @@ if ($page == 'depts') {
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="6" style="text-align:center; padding:20px;">ไม่พบข้อมูล</td></tr>
+                        <tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">-- ไม่มีข้อมูลใน Scope นี้ --</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+    <?php endforeach; ?>
 
-            <div id="addModal" class="modal">
-                <div class="modal-content">
-                    <span class="close" onclick="closeModal('addModal')">&times;</span>
-                    <h3>เพิ่มข้อมูลใหม่</h3>
-                    <form method="POST">
-                        <div class="form-group">
-                            <label>เลือกหมวดหมู่ (Source):</label>
-                            <select name="source_id" required>
-                                <option value="">-- เลือก --</option>
-                                <?php foreach ($sources_options as $src): ?>
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addModal')">&times;</span>
+            <h3>เพิ่มข้อมูลใหม่</h3>
+            <form method="POST">
+                <div class="form-group">
+                    <label>เลือกหมวดหมู่ (Source):</label>
+                    <select name="source_id" required>
+                        <option value="">-- กรุณาเลือก --</option>
+                        <?php foreach([1, 2, 3] as $s_id): ?>
+                            <optgroup label="Scope <?php echo $s_id; ?>">
+                                <?php foreach ($scope_grouped_sources[$s_id] as $src): ?>
                                     <option value="<?php echo $src['source_id']; ?>">
                                         <?php echo $src['source_name']; ?>
                                     </option>
                                 <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>ชื่อรายการ (Factor Name):</label>
-                            <input type="text" name="factor_name" placeholder="เช่น Diesel, LPG" required>
-                        </div>
-                        <div class="form-group">
-                            <label>ค่าสัมประสิทธิ์ (Factor Value):</label>
-                            <input type="number" step="0.0001" name="factor_value" required>
-                        </div>
-                        <div class="form-group">
-                            <label>หน่วย (Unit):</label>
-                            <input type="text" name="unit" placeholder="เช่น kgCO2e/Litre" required>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" name="add_factor" class="btn-action" style="background:#27ae60; border:none; width:100%;">บันทึก</button>
-                        </div>
-                    </form>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label>ชื่อรายการ (Factor Name):</label>
+                    <input type="text" name="factor_name" placeholder="เช่น Diesel, LPG" required>
+                </div>
+                <div class="form-group">
+                    <label>ค่าสัมประสิทธิ์ (Factor Value):</label>
+                    <input type="number" step="0.0001" name="factor_value" required>
+                </div>
+                <div class="form-group">
+                    <label>หน่วย (Unit):</label>
+                    <input type="text" name="unit" placeholder="เช่น kgCO2e/Litre" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" name="add_factor" class="btn-action btn-add" style="width:100%;">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            <div id="editModal" class="modal">
-                <div class="modal-content">
-                    <span class="close" onclick="closeModal('editModal')">&times;</span>
-                    <h3>แก้ไขข้อมูล</h3>
-                    <form method="POST">
-                        <input type="hidden" id="edit_factor_id" name="edit_factor_id">
-                        
-                        <div class="form-group">
-                            <label>หมวดหมู่ (Source):</label>
-                            <select id="edit_source_id" name="edit_source_id" required>
-                                <?php foreach ($sources_options as $src): ?>
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editModal')">&times;</span>
+            <h3>แก้ไขข้อมูล</h3>
+            <form method="POST">
+                <input type="hidden" id="edit_factor_id" name="edit_factor_id">
+                
+                <div class="form-group">
+                    <label>หมวดหมู่ (Source):</label>
+                    <select id="edit_source_id" name="edit_source_id" required>
+                        <?php foreach([1, 2, 3] as $s_id): ?>
+                            <optgroup label="Scope <?php echo $s_id; ?>">
+                                <?php foreach ($scope_grouped_sources[$s_id] as $src): ?>
                                     <option value="<?php echo $src['source_id']; ?>">
                                         <?php echo $src['source_name']; ?>
                                     </option>
                                 <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>ชื่อรายการ:</label>
-                            <input type="text" id="edit_factor_name" name="edit_factor_name" required>
-                        </div>
-                        <div class="form-group">
-                            <label>ค่าสัมประสิทธิ์:</label>
-                            <input type="number" step="0.0001" id="edit_factor_value" name="edit_factor_value" required>
-                        </div>
-                        <div class="form-group">
-                            <label>หน่วย:</label>
-                            <input type="text" id="edit_unit" name="edit_unit" required>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" name="update_factor" class="btn-action" style="background:#f39c12; border:none; width:100%;">บันทึกแก้ไข</button>
-                        </div>
-                    </form>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label>ชื่อรายการ:</label>
+                    <input type="text" id="edit_factor_name" name="edit_factor_name" required>
+                </div>
+                <div class="form-group">
+                    <label>ค่าสัมประสิทธิ์:</label>
+                    <input type="number" step="0.0001" id="edit_factor_value" name="edit_factor_value" required>
+                </div>
+                <div class="form-group">
+                    <label>หน่วย:</label>
+                    <input type="text" id="edit_unit" name="edit_unit" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" name="update_factor" class="btn-action btn-edit" style="width:100%; border:none;">บันทึกแก้ไข</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-            <script>
-                function openAddModal() {
-                    document.getElementById('addModal').style.display = 'block';
-                }
+    <script>
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'block';
+        }
 
-                function openEditModal(id, sourceId, name, value, unit) {
-                    document.getElementById('edit_factor_id').value = id;
-                    document.getElementById('edit_source_id').value = sourceId; // Auto-select Dropdown
-                    document.getElementById('edit_factor_name').value = name;
-                    document.getElementById('edit_factor_value').value = value;
-                    document.getElementById('edit_unit').value = unit;
-                    document.getElementById('editModal').style.display = 'block';
-                }
+        function openEditModal(id, sourceId, name, value, unit) {
+            document.getElementById('edit_factor_id').value = id;
+            document.getElementById('edit_source_id').value = sourceId;
+            document.getElementById('edit_factor_name').value = name;
+            document.getElementById('edit_factor_value').value = value;
+            document.getElementById('edit_unit').value = unit;
+            document.getElementById('editModal').style.display = 'block';
+        }
 
-                function closeModal(modalId) {
-                    document.getElementById(modalId).style.display = 'none';
-                }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
 
-                // คลิกพื้นหลังเพื่อปิด
-                window.onclick = function(event) {
-                    if (event.target.className === 'modal') {
-                        event.target.style.display = "none";
-                    }
-                }
-            </script>
-        <?php endif; ?>
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = "none";
+            }
+        }
+    </script>
+<?php endif; ?>
 
     </main>
 </body>

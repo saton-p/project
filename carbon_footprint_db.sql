@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 25, 2026 at 07:03 AM
+-- Generation Time: Feb 05, 2026 at 08:59 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -100,7 +100,9 @@ INSERT INTO `carbon_logs` (`id`, `user_id`, `factor_id`, `amount`, `emission_res
 (81, 2, 2, 23.00, 50.3677, '2026-01-23', 'daily', '2026-01-24 09:15:18'),
 (82, 2, 3, 23.00, 62.2909, '2026-01-23', 'daily', '2026-01-24 09:15:18'),
 (83, 2, 2, 23.00, 50.3677, '2025-12-01', 'monthly', '2026-01-24 09:16:37'),
-(84, 2, 3, 234.00, 633.7422, '2025-12-01', 'monthly', '2026-01-24 09:16:37');
+(84, 2, 3, 234.00, 633.7422, '2025-12-01', 'monthly', '2026-01-24 09:16:37'),
+(103, 2, 2, 323.00, 707.3377, '2026-01-01', 'monthly', '2026-01-25 00:04:32'),
+(104, 2, 3, 323.00, 874.7809, '2026-01-01', 'monthly', '2026-01-25 00:04:32');
 
 -- --------------------------------------------------------
 
@@ -149,7 +151,13 @@ INSERT INTO `emission_factors` (`factor_id`, `source_id`, `factor_name`, `factor
 (2, 2, 'น้ำมันเบนซิน', 2.189900, 'ลิตร', '2023', NULL),
 (3, 2, 'น้ำมันดีเซล', 2.708300, 'ลิตร', '2023', NULL),
 (4, 4, 'ปริมาณขยะของเสีย', 0.400000, 'ลิตร', '2023', NULL),
-(5, 5, 'กระดาษ A4', 0.001200, 'กิโลกรัม', '2023', NULL);
+(5, 5, 'กระดาษ A4', 0.001200, 'กิโลกรัม', '2023', NULL),
+(6, 2, 'LPG', 3.113400, 'kg', '0000', NULL),
+(7, 2, 'สารดับเพลิง (CO2)', 1.000000, 'kgCO2', '0000', NULL),
+(8, 2, 'สารมีเทนจากระบบถังบำบัดน้ำเสีย', 28.000000, 'kgH4', '0000', NULL),
+(9, 2, 'สารมีเทนจากบ่อบำบัดน้ำเสียแบบไม่เติมอากาศ', 28.000000, 'kgCH4', '0000', NULL),
+(10, 2, 'สารทำความเย็นชนิด R134a', 1300.000000, 'HFC-134a', '0000', NULL),
+(11, 2, 'สารทำความเย็นชนิด R32', 677.000000, 'HFC-32', '0000', NULL);
 
 -- --------------------------------------------------------
 
@@ -245,7 +253,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `password`, `full_name`, `email`, `role_id`, `dept_id`, `status`, `last_login`, `updated_at`) VALUES
-(2, 'tawan', '$2y$10$DlmoOMItCVIsOmaLYnr8Ve0FyeoE01OTQ20JCdR0l1Qgcu586YmEa', 'tawan deemesri', 'tawan@gmail.com', 1, 1, 'active', '2026-01-25 12:10:33', '2026-01-25 05:10:33');
+(2, 'tawan', '$2y$10$DlmoOMItCVIsOmaLYnr8Ve0FyeoE01OTQ20JCdR0l1Qgcu586YmEa', 'tawan deemesri', 'tawan@gmail.com', 1, 1, 'active', '2026-02-05 14:50:57', '2026-02-05 07:50:57');
 
 --
 -- Indexes for dumped tables
@@ -341,7 +349,7 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `carbon_logs`
 --
 ALTER TABLE `carbon_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -353,7 +361,7 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `emission_factors`
 --
 ALTER TABLE `emission_factors`
-  MODIFY `factor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `factor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `emission_sources`

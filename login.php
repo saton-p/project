@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../db_config.php';
+require_once 'db_config.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user = $_POST['username'];
@@ -73,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carbon Login - Street Style</title>
+    <title>Carbon Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -322,6 +322,120 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             0%, 100% { transform: scale(1); opacity: 0.3; } 
             50% { transform: scale(1.2); opacity: 0.5; } 
         }
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<style>
+    /* แก้ไขปัญหา Scroll ไม่ได้บนมือถือ */
+    body {
+        -webkit-overflow-scrolling: touch; /* ให้ Scroll ลื่นบน iOS */
+    }
+
+    /* ================= RESPONSIVE / MOBILE CSS ================= */
+    @media (max-width: 768px) {
+        /* ปรับ Layout หลักให้ Scroll แนวตั้งได้ */
+        body {
+            flex-direction: column;
+            height: auto;
+            overflow-y: auto; /* สำคัญ: ปล่อยให้ Scroll ได้ตามปกติ */
+            display: block;
+        }
+
+        /* ปรับ Sidebar เป็นแถบเมนูด้านบน */
+        .sidebar {
+            width: 100%;
+            height: auto;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0;
+            overflow-x: auto; /* ให้เลื่อนเมนูแนวนอนได้ถ้าเมนูเยอะ */
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 10px 15px;
+            font-size: 1.1em;
+            border-bottom: none;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* ซ่อนโปรไฟล์เพื่อประหยัดพื้นที่ */
+        .user-profile { display: none; }
+
+        /* ปรับเมนูให้เรียงแนวนอน */
+        .sidebar-menu {
+            display: flex;
+            flex-direction: row;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-menu li button, .sidebar-menu li a {
+            padding: 15px;
+            border-left: none;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            justify-content: center;
+        }
+        .sidebar-menu li button.active, .sidebar-menu li a.active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: transparent;
+            border-bottom-color: #f1c40f;
+        }
+        
+        /* ซ่อนข้อความเมนู เหลือแต่ไอคอน (ถ้าต้องการ) หรือปรับขนาด */
+        .sidebar-menu li button span, .sidebar-menu li a span { display: none; }
+        /* ถ้าไม่มี Icon ให้ใช้ตัวอักษรย่อ หรือใส่ content แทน (Optional) */
+        .sidebar-menu li button::after { content: attr(id); font-size: 0.7em; } 
+
+        /* ปรับปุ่ม Logout */
+        .logout-container { padding: 0; margin: 0; }
+        .btn-logout { width: auto; padding: 15px; border-radius: 0; }
+
+        /* ปรับพื้นที่เนื้อหา */
+        .main-content {
+            padding: 15px;
+            height: auto;
+            overflow: visible;
+        }
+        .container {
+            padding-bottom: 60px;
+            max-width: 100%;
+        }
+
+        /* ปรับ Grid Input ให้เหลือ 1 คอลัมน์ */
+        .grid-inputs, .profile-grid {
+            grid-template-columns: 1fr !important;
+        }
+
+        /* ปรับช่องวันที่ให้เรียงลงมา */
+        .date-input-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .date-input, .date-field {
+            width: 100%;
+            min-width: 0;
+        }
+
+        /* ปรับตารางให้เลื่อนแนวนอนได้ (ไม่ล้นจอ) */
+        table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        /* ปรับ Modal ให้เต็มจอ */
+        .modal-content {
+            width: 95%;
+            margin: 5% auto;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+    }
+</style>
     </style>
 </head>
 <body>

@@ -10,7 +10,7 @@ require_once 'db_config.php';
 $user_id = $_SESSION['user_id'];
 $message = "";
 
-// [แก้ไขล่าสุด] เช็คว่าถ้ามีค่า hist_mode (จากการค้นหา) ให้ไป tab history ถ้าไม่มีให้ไป record
+// Active Tab Logic
 $active_tab = (isset($_GET['hist_mode']) || isset($_GET['msg'])) ? 'history' : 'record';
 if(isset($_POST['update_profile']) || isset($_POST['change_password'])) $active_tab = 'profile';
 
@@ -19,7 +19,6 @@ if (isset($_POST['delete_batch'])) {
     try {
         $conn->prepare("DELETE FROM carbon_logs WHERE user_id=? AND log_date=? AND created_at=?")
              ->execute([$user_id, $_POST['del_date'], $_POST['del_time']]);
-        // ส่งค่า hist_mode กลับไปเพื่อให้ยังอยู่หน้าเดิมและ Tab เดิม
         header("Location: home.php?hist_mode=".($_POST['hist_mode']??'daily')."&msg=deleted"); exit();
     } catch (Exception $e) { $message = "<div class='notification error'>เกิดข้อผิดพลาด</div>"; }
 }
@@ -102,8 +101,19 @@ if (isset($_POST['change_password'])) {
 }
 
 // --- 4. DATA FETCHING ---
-$user = $conn->query("SELECT * FROM users WHERE user_id=$user_id")->fetch();
+$user = $conn->query("
+    SELECT users.*, departments.dept_name 
+    FROM users 
+    LEFT JOIN departments ON users.dept_id = departments.dept_id 
+    WHERE users.user_id = $user_id
+")->fetch();
 $departments = $conn->query("SELECT * FROM departments ORDER BY dept_id ASC")->fetchAll();
+// ---  ดึงข้อมูลองค์กร ---
+$org_info = $conn->query("SELECT * FROM organization_info LIMIT 1")->fetch();
+// ถ้าแอดมินยังไม่เคยตั้งค่า ให้ใช้ค่าเริ่มต้น
+if (!$org_info) {
+    $org_info = ['org_name' => 'CarbonSys', 'address' => ''];
+}
 
 $sql = "SELECT f.*, s.source_name, s.scope_id 
         FROM emission_factors f 
@@ -117,30 +127,18 @@ foreach ($factors_all as $row) {
     $scope_grouped[$row['scope_id']][$row['source_name']][] = $row;
 }
 
-// --- 5. HISTORY DATA (Updated Filter Logic) ---
+// --- 5. HISTORY DATA ---
 $hist_mode = $_GET['hist_mode'] ?? 'daily'; 
-
 $sql_hist = "SELECT log.*, f.factor_name, f.unit, s.source_name, s.scope_id 
              FROM carbon_logs log 
              JOIN emission_factors f ON log.factor_id=f.factor_id 
              JOIN emission_sources s ON f.source_id=s.source_id 
              WHERE log.user_id=?";
 
-if ($hist_mode == 'daily') { 
-    $d = $_GET['d'] ?? date('Y-m-d'); 
-    $sql_hist .= " AND log.log_date = '$d'"; 
-} elseif ($hist_mode == 'quarterly') { 
-    $qy = $_GET['q_y'] ?? date('Y'); 
-    $qq = $_GET['q_q'] ?? ceil(date('n')/3); 
-    $sql_hist .= " AND YEAR(log.log_date) = '$qy' AND QUARTER(log.log_date) = '$qq'"; 
-} elseif ($hist_mode == 'yearly') { 
-    $yy = $_GET['y_y'] ?? date('Y'); 
-    $sql_hist .= " AND YEAR(log.log_date) = '$yy'"; 
-} else { // monthly
-    $m = $_GET['m'] ?? date('n'); 
-    $y = $_GET['y'] ?? date('Y'); 
-    $sql_hist .= " AND MONTH(log.log_date) = '$m' AND YEAR(log.log_date) = '$y'"; 
-}
+if ($hist_mode == 'daily') { $d = $_GET['d'] ?? date('Y-m-d'); $sql_hist .= " AND log.log_date = '$d'"; }
+elseif ($hist_mode == 'quarterly') { $qy = $_GET['q_y'] ?? date('Y'); $qq = $_GET['q_q'] ?? ceil(date('n')/3); $sql_hist .= " AND YEAR(log.log_date) = '$qy' AND QUARTER(log.log_date) = '$qq'"; }
+elseif ($hist_mode == 'yearly') { $yy = $_GET['y_y'] ?? date('Y'); $sql_hist .= " AND YEAR(log.log_date) = '$yy'"; }
+else { $m = $_GET['m'] ?? date('n'); $y = $_GET['y'] ?? date('Y'); $sql_hist .= " AND MONTH(log.log_date) = '$m' AND YEAR(log.log_date) = '$y'"; }
 
 $sql_hist .= " ORDER BY log.log_date DESC, log.created_at DESC";
 $stmt_hist = $conn->prepare($sql_hist);
@@ -157,6 +155,16 @@ foreach ($logs_data as $row) {
     $daily_reports[$key]['count']++;
 }
 $grand_total = array_sum($sums);
+
+// ดึงข้อมูล User พร้อมชื่อแผนกที่สังกัด
+$sql_users = "SELECT users.*, departments.dept_name 
+              FROM users 
+              LEFT JOIN departments ON users.dept_id = departments.dept_id 
+              ORDER BY users.user_id DESC";
+$user_list = $conn->query($sql_users)->fetchAll();
+
+// ดึงรายชื่อแผนกทั้งหมด (เอาไว้ทำ Dropdown ให้เลือกตอนเพิ่ม/แก้ไข User)
+$all_depts = $conn->query("SELECT * FROM departments ORDER BY dept_name ASC")->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -182,23 +190,26 @@ $grand_total = array_sum($sums);
             --radius: 16px;
         }
         
+        /* Base Reset */
         body { font-family: 'Prompt', sans-serif; margin: 0; background: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
         * { box-sizing: border-box; outline: none; } a { text-decoration: none; }
         
-        /* Sidebar */
+        /* Sidebar (Desktop) */
         .sidebar { width: 280px; background: white; display: flex; flex-direction: column; z-index: 50; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-md); }
         .sidebar-header { padding: 25px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; }
         .brand { font-size: 1.5em; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
         .user-card { padding: 30px 20px; text-align: center; background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, rgba(255,255,255,0) 100%); }
         .avatar { width: 80px; height: 80px; background: #d1fae5; color: var(--primary-dark); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 2em; box-shadow: 0 4px 10px rgba(16,185,129,0.2); }
         .user-name { font-weight: 600; font-size: 1.1em; margin-bottom: 5px; }
         .user-role { color: var(--text-muted); font-size: 0.9em; }
-        
+
         .menu { list-style: none; padding: 20px; margin: 0; flex-grow: 1; overflow-y: auto; }
         .menu li { margin-bottom: 8px; }
         .menu-btn { width: 100%; padding: 12px 15px; border-radius: 12px; border: none; background: transparent; color: var(--text-muted); font-family: 'Prompt'; font-size: 1em; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s; font-weight: 500; }
         .menu-btn:hover { background: #f3f4f6; color: var(--primary); }
         .menu-btn.active { background: #ecfdf5; color: var(--primary-dark); font-weight: 600; box-shadow: var(--shadow-sm); }
+        
         .logout-wrap { padding: 20px; border-top: 1px solid #e5e7eb; }
         .btn-logout { display: block; width: 100%; padding: 12px; background: #fee2e2; color: #991b1b; text-align: center; border-radius: 12px; font-weight: 500; transition: 0.2s; }
         .btn-logout:hover { background: #fecaca; }
@@ -216,7 +227,7 @@ $grand_total = array_sum($sums);
         .page-header { margin-bottom: 30px; } .page-title { font-size: 1.8em; font-weight: 700; color: var(--secondary); margin: 0; } .page-desc { color: var(--text-muted); margin-top: 5px; }
         .card { background: white; border-radius: var(--radius); padding: 25px; box-shadow: var(--shadow-sm); margin-bottom: 25px; border: 1px solid #f3f4f6; transition: transform 0.2s; }
         
-        /* [FIXED] Stepper CSS */
+        /* Stepper */
         .stepper-container { width: 100%; margin-bottom: 30px; position: relative; }
         .stepper { display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 10px; }
         .stepper::before { content: ''; position: absolute; top: 22px; left: 0; right: 0; height: 4px; background: #e5e7eb; z-index: 0; border-radius: 2px; }
@@ -228,16 +239,16 @@ $grand_total = array_sum($sums);
         .step-content { display: none; animation: slideUp 0.3s; }
         .step-content.active { display: block; }
 
-        /* Form */
+        /* Form Elements */
         .topic-group { margin-bottom: 25px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; background: #f9fafb; }
-        .topic-title { font-weight: 600; color: var(--secondary); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; }
+        .topic-title { font-weight: 600; color: var(--secondary); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb; }
         .grid-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-size: 0.9em; color: var(--text-muted); font-weight: 500; }
         .input-group { display: flex; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; background: white; transition: 0.2s; }
-        .input-group:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
         .input-group input { flex: 1; border: none; padding: 12px 15px; font-size: 1em; font-family: 'Prompt'; width: 100%; color: var(--text-main); }
         .input-unit { background: #f3f4f6; padding: 0 15px; display: flex; align-items: center; font-size: 0.85em; color: var(--text-muted); border-left: 1px solid #d1d5db; font-weight: 500; }
 
+        /* Date & Radio */
         .date-section { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 10px; }
         .radio-pills { display: flex; gap: 10px; flex-wrap: wrap; }
         .radio-pills label { cursor: pointer; } .radio-pills input { display: none; }
@@ -245,12 +256,10 @@ $grand_total = array_sum($sums);
         .radio-pills input:checked + span { background: #ecfdf5; color: var(--primary-dark); border-color: var(--primary); font-weight: 600; }
         .date-control { padding: 10px 15px; border: 1px solid #d1d5db; border-radius: 10px; font-family: 'Prompt'; font-size: 1em; color: var(--secondary); background: white; }
 
+        /* Buttons */
         .btn { padding: 12px 24px; border-radius: 10px; border: none; font-size: 1em; font-family: 'Prompt'; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px rgba(16,185,129,0.2); }
-        .btn-primary:hover { background: var(--primary-dark); }
         .btn-secondary { background: #9ca3af; color: white; }
-        .btn-secondary:hover { background: #6b7280; }
         .btn-success { background: #22c55e; color: white; width: 100%; box-shadow: 0 4px 6px rgba(34,197,94,0.2); }
         .action-row { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
 
@@ -258,7 +267,6 @@ $grand_total = array_sum($sums);
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { padding: 25px; border-radius: 16px; color: white; text-align: center; position: relative; overflow: hidden; box-shadow: var(--shadow-md); }
         .stat-card h3 { font-size: 2.2em; margin: 10px 0; font-weight: 700; }
-        .stat-card span { opacity: 0.9; font-size: 0.95em; }
         .bg-1 { background: linear-gradient(135deg, #f87171, #ef4444); } .bg-2 { background: linear-gradient(135deg, #fbbf24, #f59e0b); } .bg-3 { background: linear-gradient(135deg, #60a5fa, #3b82f6); } .bg-all { background: linear-gradient(135deg, #34d399, #10b981); }
 
         .log-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f3f4f6; transition: 0.2s; }
@@ -274,10 +282,6 @@ $grand_total = array_sum($sums);
         .btn-del { background: #fee2e2; color: #dc2626; }
         .btn-del:hover { background: #fecaca; }
 
-        .notification { padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 500; animation: slideUp 0.3s; }
-        .notification.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-        .notification.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-
         /* Modal */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); animation: fadeIn 0.2s; }
         .modal-content { background: white; margin: 5% auto; width: 90%; max-width: 800px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; max-height: 85vh; }
@@ -287,27 +291,72 @@ $grand_total = array_sum($sums);
         .detail-table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
         .detail-table th { text-align: left; padding: 12px; color: var(--text-muted); border-bottom: 2px solid #e5e7eb; font-weight: 600; }
         .detail-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        .notification { padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; font-weight: 500; animation: slideUp 0.3s; }
+        .notification.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .notification.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 25px; }
 
-        /* Mobile */
+        /* ================= MOBILE RESPONSIVE FIX ================= */
         .hamburger { display: none; background: none; border: none; font-size: 1.8em; color: var(--text-main); cursor: pointer; }
+        
         @media (max-width: 768px) {
-            .sidebar { position: fixed; top: 0; left: 0; width: 100%; height: auto; max-height: 70px; overflow: hidden; }
+            /* 1. Header & Menu */
+            .sidebar { 
+                width: 100%; height: auto; display: block; 
+                max-height: 70px; /* Hide Menu by default */
+                overflow: hidden; 
+                position: fixed; top: 0; left: 0; right: 0; 
+                z-index: 10000; 
+                transition: max-height 0.4s ease-in-out; 
+                box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            }
             .sidebar.open { max-height: 100vh; overflow-y: auto; }
-            .sidebar-header { height: 70px; padding: 0 20px; }
+            .sidebar-header { height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+            
             .hamburger { display: block; }
             .user-card { display: none; }
-            .menu { padding-top: 0; }
-            .menu-btn { padding: 15px 20px; justify-content: flex-start; border-radius: 0; border-bottom: 1px solid #f3f4f6; }
-            .menu-btn span { margin-left: 10px; display: inline-block !important; }
-            .main-content { padding: 90px 20px 20px 20px; }
-            .stepper-container { overflow-x: auto; padding-bottom: 10px; }
-            .step-item { min-width: 110px; }
+            
+            .menu { display: block; padding-top: 0; margin-top: 0; border-top: 1px solid #eee; }
+            .menu li { border-bottom: 1px solid #f3f4f6; width: 100%; }
+            .menu-btn { 
+                padding: 15px 25px; 
+                width: 100%; 
+                justify-content: flex-start; /* Align text left */
+                border-radius: 0; 
+            }
+            .menu-btn span { display: inline-block; margin-left: 10px; }
+            
+            .logout-wrap { padding: 20px; }
+            .btn-logout { width: 100%; }
+
+            /* 2. Main Content */
+            .main-content { 
+                padding: 20px; 
+                padding-top: 90px !important; /* Push content down */
+                height: auto; 
+                overflow: visible; 
+            }
+            .container { padding-bottom: 60px; }
+            
+            /* 3. Grids & Flex */
+            .grid-form { grid-template-columns: 1fr; }
+            .profile-grid { grid-template-columns: 1fr; }
+            .date-section { flex-direction: column; align-items: stretch; }
+            .stats-grid { grid-template-columns: 1fr; }
+            
+            /* 4. Log Items & Modal */
             .log-item { flex-direction: column; align-items: flex-start; gap: 10px; }
             .log-actions { width: 100%; justify-content: space-between; margin: 0; margin-top: 10px; }
             .btn-icon { flex: 1; text-align: center; }
-            .modal-content { height: 95vh; margin: 2.5vh auto; width: 95%; }
+            .modal-content { width: 95%; margin: 15% auto; max-height: 80vh; }
+            table { display: block; overflow-x: auto; white-space: nowrap; }
+            
+            /* 5. Stepper Mobile */
+            .stepper-container { overflow-x: auto; padding-bottom: 10px; }
+            .step-item { min-width: 100px; }
+            .action-row { flex-direction: column-reverse; gap: 10px; }
+            .btn-primary, .btn-secondary, .btn-success { width: 100%; padding: 12px; }
         }
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
     </style>
     
     <script>
@@ -320,18 +369,15 @@ $grand_total = array_sum($sums);
             window.scrollTo(0,0);
         }
         function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); }
-        
         function toggleDate(mode) {
             document.querySelectorAll('.date-input').forEach(el => el.style.display='none');
             const el = document.getElementById('input-'+mode);
-            if(el) el.style.display='block'; // or 'flex'
+            if(el) el.style.display='block';
         }
-
-        // [NEW] ฟังก์ชัน Toggle สำหรับหน้าค้นหาประวัติ
         function toggleHistDate(mode) {
             document.querySelectorAll('.hist-input').forEach(el => el.style.display='none');
             const el = document.getElementById('hist-input-'+mode);
-            if(el) el.style.display='flex'; 
+            if(el) el.style.display='flex';
         }
         
         let currentStep = 1;
@@ -354,7 +400,7 @@ $grand_total = array_sum($sums);
             document.getElementById('modalDate').innerText = currentLogDate;
             let html = '<table class="detail-table"><thead><tr><th>รายการ</th><th style="text-align:right;">ปริมาณ</th><th style="text-align:right;">Emission (kgCO2e)</th><th></th></tr></thead><tbody>';
             currentLogItems.forEach(i => { 
-                html += `<tr><td><div style="font-weight:600;color:#374151">${i.factor_name}</div><div style="font-size:0.85em;color:#9ca3af">${i.source_name || ''}</div></td><td style="text-align:right;">${parseFloat(i.amount).toLocaleString()} ${i.unit}</td><td style="text-align:right;font-weight:600;color:#059669">${parseFloat(i.emission_result).toFixed(4)}</td><td style="text-align:center"><a href="home.php?del_log_id=${i.id}&hist_mode=<?php echo $hist_mode; ?>" onclick="return confirm('ลบ?')" class="btn-del" style="padding:5px 10px;text-decoration:none;border-radius:6px;font-size:0.8em">ลบ</a></td></tr>`; 
+                html += `<tr><td><div style="font-weight:600;color:#374151">${i.factor_name}</div><div style="font-size:0.85em;color:#9ca3af">${i.source_name || ''}</div></td><td style="text-align:right;">${parseFloat(i.amount).toLocaleString()} ${i.unit}</td><td style="text-align:right;font-weight:600;color:#059669">${parseFloat(i.emission_result).toFixed(4)}</td><td style="text-align:center"><a href="home.php?del_log_id=${i.id}&hist_mode=<?php echo $hist_mode; ?>" onclick="return confirm('ลบ?')" class="btn-del" style="padding:4px 8px;text-decoration:none;border-radius:6px;font-size:0.8em">ลบ</a></td></tr>`; 
             });
             html += '</tbody></table>';
             document.getElementById('modalBody').innerHTML = html;
@@ -379,14 +425,23 @@ $grand_total = array_sum($sums);
 <body>
 
     <nav class="sidebar">
-        <div class="sidebar-header"><div class="brand"><span>🍃</span> CarbonSys</div><button class="hamburger" onclick="toggleMenu()">☰</button></div>
-        <div class="user-card"><div class="avatar">👤</div><div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div><div class="user-role">@<?php echo htmlspecialchars($user['username']); ?></div></div>
+        <div class="sidebar-header">
+            <div class="brand"><span>🍃</span> CarbonSys</div>
+            <button class="hamburger" onclick="toggleMenu()">☰</button>
+        </div>
+        <div class="user-card">
+            <div class="avatar">👤</div>
+            <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
+            <div class="user-role">@<?php echo htmlspecialchars($user['username']); ?></div>
+        </div>
         <ul class="menu">
             <li><button onclick="switchTab('record')" class="menu-btn <?php echo $active_tab=='record'?'active':''; ?>" id="btn-record">📝 <span>บันทึกข้อมูล</span></button></li>
             <li><button onclick="switchTab('history')" class="menu-btn <?php echo $active_tab=='history'?'active':''; ?>" id="btn-history">📊 <span>ประวัติกิจกรรม</span></button></li>
             <li><button onclick="switchTab('profile')" class="menu-btn <?php echo $active_tab=='profile'?'active':''; ?>" id="btn-profile">⚙️ <span>ข้อมูลส่วนตัว</span></button></li>
         </ul>
-        <div class="logout-wrap"><a href="home.php?action=logout" class="btn-logout" onclick="return confirm('ยืนยัน?')">ออกจากระบบ</a></div>
+        <div class="logout-wrap">
+            <a href="home.php?action=logout" class="btn-logout" onclick="return confirm('ยืนยัน?')">ออกจากระบบ</a>
+        </div>
     </nav>
 
     <main class="main-content">
@@ -465,47 +520,18 @@ $grand_total = array_sum($sums);
                 <div class="card">
                     <form method="GET" style="display:flex; flex-wrap:wrap; gap:15px; align-items:center;">
                         <span style="font-weight:600; color:var(--secondary);">🗓 ค้นหา:</span>
-                        
                         <div class="radio-pills">
                             <label><input type="radio" name="hist_mode" value="daily" <?php echo ($hist_mode=='daily')?'checked':''; ?> onclick="toggleHistDate('daily')"><span>รายวัน</span></label>
                             <label><input type="radio" name="hist_mode" value="monthly" <?php echo ($hist_mode=='monthly')?'checked':''; ?> onclick="toggleHistDate('monthly')"><span>รายเดือน</span></label>
                             <label><input type="radio" name="hist_mode" value="quarterly" <?php echo ($hist_mode=='quarterly')?'checked':''; ?> onclick="toggleHistDate('quarterly')"><span>รายไตรมาส</span></label>
                             <label><input type="radio" name="hist_mode" value="yearly" <?php echo ($hist_mode=='yearly')?'checked':''; ?> onclick="toggleHistDate('yearly')"><span>รายปี</span></label>
                         </div>
-
                         <div style="flex:1; min-width: 200px;">
-                            <div id="hist-input-daily" class="hist-input" style="display:<?php echo ($hist_mode=='daily')?'flex':'none'; ?>;">
-                                <input type="date" name="d" value="<?php echo $_GET['d'] ?? date('Y-m-d'); ?>" class="date-control" style="width:100%">
-                            </div>
-                            
-                            <div id="hist-input-monthly" class="hist-input" style="display:<?php echo ($hist_mode=='monthly')?'flex':'none'; ?>; gap:10px;">
-                                <select name="m" class="date-control" style="flex:1">
-                                    <?php for($i=1;$i<=12;$i++) echo "<option value='$i' ".($i==($_GET['m']??date('n'))?'selected':'').">เดือน $i</option>"; ?>
-                                </select>
-                                <select name="y" class="date-control" style="flex:1">
-                                    <?php for($y=date('Y');$y>=date('Y')-2;$y--) echo "<option value='$y' ".($y==($_GET['y']??date('Y'))?'selected':'').">".($y+543)."</option>"; ?>
-                                </select>
-                            </div>
-
-                            <div id="hist-input-quarterly" class="hist-input" style="display:<?php echo ($hist_mode=='quarterly')?'flex':'none'; ?>; gap:10px;">
-                                <select name="q_q" class="date-control" style="flex:1">
-                                    <option value="1" <?php echo (($_GET['q_q']??'')=='1')?'selected':''; ?>>Q1</option>
-                                    <option value="2" <?php echo (($_GET['q_q']??'')=='2')?'selected':''; ?>>Q2</option>
-                                    <option value="3" <?php echo (($_GET['q_q']??'')=='3')?'selected':''; ?>>Q3</option>
-                                    <option value="4" <?php echo (($_GET['q_q']??'')=='4')?'selected':''; ?>>Q4</option>
-                                </select>
-                                <select name="q_y" class="date-control" style="flex:1">
-                                    <?php for($y=date('Y');$y>=date('Y')-2;$y--) echo "<option value='$y' ".($y==($_GET['q_y']??date('Y'))?'selected':'').">".($y+543)."</option>"; ?>
-                                </select>
-                            </div>
-
-                            <div id="hist-input-yearly" class="hist-input" style="display:<?php echo ($hist_mode=='yearly')?'flex':'none'; ?>;">
-                                <select name="y_y" class="date-control" style="width:100%">
-                                    <?php for($y=date('Y');$y>=date('Y')-5;$y--) echo "<option value='$y' ".($y==($_GET['y_y']??date('Y'))?'selected':'').">".($y+543)."</option>"; ?>
-                                </select>
-                            </div>
+                            <div id="hist-input-daily" class="hist-input" style="display:<?php echo ($hist_mode=='daily')?'block':'none'; ?>;"><input type="date" name="d" value="<?php echo $_GET['d'] ?? date('Y-m-d'); ?>" class="date-control" style="width:100%"></div>
+                            <div id="hist-input-monthly" class="hist-input" style="display:<?php echo ($hist_mode=='monthly')?'flex':'none'; ?>; gap:10px;"><select name="m" class="date-control" style="flex:1"><?php for($i=1;$i<=12;$i++) echo "<option value='$i' ".($i==($_GET['m']??date('n'))?'selected':'').">เดือน $i</option>"; ?></select><select name="y" class="date-control" style="flex:1"><?php for($y=date('Y');$y>=date('Y')-2;$y--) echo "<option value='$y' ".($y==($_GET['y']??date('Y'))?'selected':'').">".($y+543)."</option>"; ?></select></div>
+                            <div id="hist-input-quarterly" class="hist-input" style="display:<?php echo ($hist_mode=='quarterly')?'flex':'none'; ?>; gap:10px;"><select name="q_q" class="date-control" style="flex:1"><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select><select name="q_y" class="date-control" style="flex:1"><?php for($y=date('Y');$y>=date('Y')-2;$y--) echo "<option value='$y'>".($y+543)."</option>"; ?></select></div>
+                            <div id="hist-input-yearly" class="hist-input" style="display:<?php echo ($hist_mode=='yearly')?'flex':'none'; ?>;"><select name="y_y" class="date-control" style="width:100%"><?php for($y=date('Y');$y>=date('Y')-5;$y--) echo "<option value='$y'>".($y+543)."</option>"; ?></select></div>
                         </div>
-
                         <button type="submit" class="btn btn-secondary" style="padding:8px 15px; font-size:0.9em;">🔍 ค้นหา</button>
                     </form>
                 </div>
@@ -513,7 +539,7 @@ $grand_total = array_sum($sums);
                 <div class="card" style="padding:0; overflow:hidden;">
                     <?php if(empty($daily_reports)): ?><div style="padding:40px; text-align:center; color:#9ca3af;">ไม่พบข้อมูล</div><?php else: foreach($daily_reports as $rpt): 
                         $json_items = htmlspecialchars(json_encode($rpt['items']), ENT_QUOTES, 'UTF-8'); ?>
-                        <div class="log-item"><div><div class="log-date">📅 <?php echo date('d/m/Y', strtotime($rpt['date'])); ?></div><div class="log-time">เวลา: <?php echo date('H:i', strtotime($rpt['time'])); ?> | <?php echo $rpt['count']; ?> รายการ</div></div><div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;"><div class="log-val"><?php echo number_format($rpt['total'],4); ?> <span style="font-size:0.5em; color:#9ca3af;">kgCO2e</span></div><div class="log-actions"><button class="btn-icon btn-view" data-date="<?php echo $rpt['date']; ?>" data-items="<?php echo $json_items; ?>" onclick="openModal(this)">👁️ รายละเอียด</button><form method="POST" onsubmit="return confirm('ลบ?')" style="margin:0;"><input type="hidden" name="delete_batch" value="1"><input type="hidden" name="del_date" value="<?php echo $rpt['date']; ?>"><input type="hidden" name="del_time" value="<?php echo $rpt['time']; ?>"><button class="btn-icon btn-del">🗑️</button></form></div></div></div>
+                        <div class="log-item"><div><div class="log-date">📅 <?php echo date('d/m/Y', strtotime($rpt['date'])); ?></div><div class="log-time">เวลา: <?php echo date('H:i', strtotime($rpt['time'])); ?> | <?php echo $rpt['count']; ?> รายการ</div></div><div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;"><div class="log-val"><?php echo number_format($rpt['total'],4); ?> <span style="font-size:0.5em; color:#9ca3af;">kgCO2e</span></div><div class="log-actions"><button class="btn-icon btn-view" data-date="<?php echo $rpt['date']; ?>" data-items="<?php echo $json_items; ?>" onclick="openModal(this)">👁️</button><form method="POST" onsubmit="return confirm('ลบ?')" style="margin:0;"><input type="hidden" name="delete_batch" value="1"><input type="hidden" name="del_date" value="<?php echo $rpt['date']; ?>"><input type="hidden" name="del_time" value="<?php echo $rpt['time']; ?>"><button class="btn-icon btn-del">🗑️</button></form></div></div></div>
                     <?php endforeach; endif; ?>
                 </div>
             </div>

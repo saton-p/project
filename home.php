@@ -135,10 +135,22 @@ $sql_hist = "SELECT log.*, f.factor_name, f.unit, s.source_name, s.scope_id
              JOIN emission_sources s ON f.source_id=s.source_id 
              WHERE log.user_id=?";
 
-if ($hist_mode == 'daily') { $d = $_GET['d'] ?? date('Y-m-d'); $sql_hist .= " AND log.log_date = '$d'"; }
-elseif ($hist_mode == 'quarterly') { $qy = $_GET['q_y'] ?? date('Y'); $qq = $_GET['q_q'] ?? ceil(date('n')/3); $sql_hist .= " AND YEAR(log.log_date) = '$qy' AND QUARTER(log.log_date) = '$qq'"; }
-elseif ($hist_mode == 'yearly') { $yy = $_GET['y_y'] ?? date('Y'); $sql_hist .= " AND YEAR(log.log_date) = '$yy'"; }
-else { $m = $_GET['m'] ?? date('n'); $y = $_GET['y'] ?? date('Y'); $sql_hist .= " AND MONTH(log.log_date) = '$m' AND YEAR(log.log_date) = '$y'"; }
+// เพิ่มเงื่อนไข AND log.log_type = '...' เข้าไป เพื่อไม่ให้มันดึงข้อมูลประเภทอื่นมาปน
+if ($hist_mode == 'daily') { 
+    $d = $_GET['d'] ?? date('Y-m-d'); 
+    $sql_hist .= " AND log.log_date = '$d' AND log.log_type = 'daily'"; 
+} elseif ($hist_mode == 'quarterly') { 
+    $qy = $_GET['q_y'] ?? date('Y'); 
+    $qq = $_GET['q_q'] ?? ceil(date('n')/3); 
+    $sql_hist .= " AND YEAR(log.log_date) = '$qy' AND QUARTER(log.log_date) = '$qq' AND log.log_type = 'quarterly'"; 
+} elseif ($hist_mode == 'yearly') { 
+    $yy = $_GET['y_y'] ?? date('Y'); 
+    $sql_hist .= " AND YEAR(log.log_date) = '$yy' AND log.log_type = 'yearly'"; 
+} else { // monthly
+    $m = $_GET['m'] ?? date('n'); 
+    $y = $_GET['y'] ?? date('Y'); 
+    $sql_hist .= " AND MONTH(log.log_date) = '$m' AND YEAR(log.log_date) = '$y' AND log.log_type = 'monthly'"; 
+}
 
 $sql_hist .= " ORDER BY log.log_date DESC, log.created_at DESC";
 $stmt_hist = $conn->prepare($sql_hist);
@@ -300,6 +312,15 @@ $all_depts = $conn->query("SELECT * FROM departments ORDER BY dept_name ASC")->f
         .hamburger { display: none; background: none; border: none; font-size: 1.8em; color: var(--text-main); cursor: pointer; }
         
         @media (max-width: 768px) {
+            /* --- เพิ่ม/แก้โค้ด 2 บล็อคนี้ เพื่อปลดล็อคการเลื่อนหน้าจอในมือถือ --- */
+            body { 
+                height: auto !important; 
+                overflow-y: auto !important; 
+                flex-direction: column;
+                -webkit-overflow-scrolling: touch; /* ทำให้ iOS เลื่อนได้ลื่นขึ้น */
+            }
+
+            
             /* 1. Header & Menu */
             .sidebar { 
                 width: 100%; height: auto; display: block; 
@@ -330,11 +351,10 @@ $all_depts = $conn->query("SELECT * FROM departments ORDER BY dept_name ASC")->f
             .btn-logout { width: 100%; }
 
             /* 2. Main Content */
-            .main-content { 
-                padding: 20px; 
-                padding-top: 90px !important; /* Push content down */
-                height: auto; 
-                overflow: visible; 
+           .main-content { 
+                padding: 90px 15px 30px 15px !important; 
+                height: auto !important; 
+                overflow: visible !important; 
             }
             .container { padding-bottom: 60px; }
             
@@ -440,7 +460,7 @@ $all_depts = $conn->query("SELECT * FROM departments ORDER BY dept_name ASC")->f
             <li><button onclick="switchTab('profile')" class="menu-btn <?php echo $active_tab=='profile'?'active':''; ?>" id="btn-profile">⚙️ <span>ข้อมูลส่วนตัว</span></button></li>
         </ul>
         <div class="logout-wrap">
-            <a href="home.php?action=logout" class="btn-logout" onclick="return confirm('ยืนยัน?')">ออกจากระบบ</a>
+            <a href="home.php?action=logout" class="btn-logout" onclick="return confirm('ยืนยันออกจากระบบ')">ออกจากระบบ</a>
         </div>
     </nav>
 

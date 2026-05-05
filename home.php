@@ -505,7 +505,7 @@ $all_depts = $conn->query("SELECT * FROM departments ORDER BY dept_name ASC")->f
                             </div>
                             <?php if(!empty($scope_grouped[$s_id])): foreach ($scope_grouped[$s_id] as $src_name => $items): ?>
                                 <div class="topic-group"><div class="topic-title">📌 <?php echo htmlspecialchars($src_name); ?></div>
-                                <div class="grid-form"><?php foreach ($items as $f): ?><div class="form-group"><label><?php echo $f['factor_name']; ?></label><div class="input-group"><input type="number" step="0.01" min="0" name="activity[<?php echo $f['factor_id']; ?>]" placeholder="0.00"><div class="input-unit"><?php echo $f['unit']; ?></div></div></div><?php endforeach; ?></div></div>
+                                <div class="grid-form"><?php foreach ($items as $f): ?><div class="form-group"><label><?php echo $f['factor_name']; ?></label><div class="input-group"><input type="number" step="any" min="0" name="activity[<?php echo $f['factor_id']; ?>]" placeholder="0.0000"><div class="input-unit"><?php echo $f['unit']; ?></div></div></div><?php endforeach; ?></div></div>
                             <?php endforeach; else: ?><div class="card" style="text-align:center; padding:40px; color:#9ca3af;">ไม่มีรายการใน Scope นี้</div><?php endif; ?>
                             <div class="action-row">
                                 <div><?php if($s_id > 1): ?><button type="button" class="btn btn-secondary" onclick="prevStep()">⬅ ย้อนกลับ</button><?php endif; ?></div>
